@@ -1,0 +1,107 @@
+# ====================================================================
+#
+#      samsung_k9.cdl
+#
+#      Drivers for the Samsung K9 family of NAND chips
+#
+# ====================================================================
+# ####ECOSGPLCOPYRIGHTBEGIN####                                            
+# -------------------------------------------                              
+# This file is part of eCos, the Embedded Configurable Operating System.   
+# Copyright (C) 2009 eCosCentric Limited.
+#
+# eCos is free software; you can redistribute it and/or modify it under    
+# the terms of the GNU General Public License as published by the Free     
+# Software Foundation; either version 2 or (at your option) any later      
+# version.                                                                 
+#
+# eCos is distributed in the hope that it will be useful, but WITHOUT      
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or    
+# FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License    
+# for more details.                                                        
+#
+# You should have received a copy of the GNU General Public License        
+# along with eCos; if not, write to the Free Software Foundation, Inc.,    
+# 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.            
+#
+# As a special exception, if other files instantiate templates or use      
+# macros or inline functions from this file, or you compile this file      
+# and link it with other works to produce a work based on this file,       
+# this file does not by itself cause the resulting work to be covered by   
+# the GNU General Public License. However the source code for this file    
+# must still be made available in accordance with section (3) of the GNU   
+# General Public License v2.                                               
+#
+# This exception does not invalidate any other reasons why a work based    
+# on this file might be covered by the GNU General Public License.         
+# -------------------------------------------                              
+# ####ECOSGPLCOPYRIGHTEND####                                              
+# ====================================================================
+######DESCRIPTIONBEGIN####
+#
+# Author(s):      wry
+# Date:           2009-03-02
+#
+#####DESCRIPTIONEND####
+#
+# ====================================================================
+
+cdl_package CYGPKG_DEVS_NAND_SAMSUNG_K9 {
+    display         "Samsung K9 NAND chip family support"
+    parent          CYGPKG_IO_NAND
+    active_if		CYGPKG_IO_NAND
+	# This does NOT implement CYGHWR_IO_NAND_DEVICE - it only provides
+	# functions for the platform HAL to draw on and itself implement
+	# CYGHWR_IO_NAND_DEVICE.
+    include_dir     cyg/devs/nand
+    description     "
+        This package provides support for the Samsung K9Fxx08X0A family 
+		of NAND flash devices. It is intended to be easy to port to
+		further chips from the same family. 
+		This package can only be used in conjunction with the platform HAL
+		for the target, in order to bring it in and properly
+		configure it to talk to the hardware present."
+    # This is a 2k page device.
+    requires        ( CYGSEM_IO_NAND_INTERFACE_VERSION >= 2 )
+
+    cdl_option      CYGNUM_DEVS_NAND_SAMSUNG_K9_BBT_DATASIZE {
+        display     "Bad Block Table in-memory size"
+        flavor      data
+        legal_values 256 to 2048
+        active_if   CYGSEM_IO_NAND_USE_BBT
+        default_value 256
+        description "This variable specifies the in-memory size of the
+            Bad Block Table. It is automatically set based on the
+            enabled chip support options."
+    }
+
+    cdl_option      CYGFUN_NAND_SAMSUNG_K9_F1G {
+        display     "Enable support for K9F1G sub-family"
+        requires    ( CYGSEM_IO_NAND_USE_BBT implies CYGNUM_DEVS_NAND_SAMSUNG_K9_BBT_DATASIZE >= 256 )
+        requires    CYGFUN_NAND_SAMSUNG_K9_LP
+    }
+
+    cdl_option      CYGFUN_NAND_SAMSUNG_K9_F2G {
+        display     "Enable support for K9F2G sub-family"
+        requires    ( CYGSEM_IO_NAND_USE_BBT implies CYGNUM_DEVS_NAND_SAMSUNG_K9_BBT_DATASIZE >= 512 )
+        requires    CYGFUN_NAND_SAMSUNG_K9_LP
+    }
+
+    cdl_option      CYGFUN_NAND_SAMSUNG_K9_F12 {
+        display     "Enable support for K9F12 sub-family"
+        requires    ( CYGSEM_IO_NAND_USE_BBT implies CYGNUM_DEVS_NAND_SAMSUNG_K9_BBT_DATASIZE >= 1024 )
+        requires    CYGFUN_NAND_SAMSUNG_K9_SP
+    }
+
+    cdl_option      CYGFUN_NAND_SAMSUNG_K9_LP {
+        display     "Enable large-page device support"
+        requires        ( CYGNUM_NAND_PAGEBUFFER >= 2048 )
+    }
+
+    cdl_option      CYGFUN_NAND_SAMSUNG_K9_SP {
+        display     "Enable small-page device support"
+        requires        ( CYGNUM_NAND_PAGEBUFFER >= 512 )
+    }
+
+}
+

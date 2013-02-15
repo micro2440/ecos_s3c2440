@@ -1,0 +1,152 @@
+# ====================================================================
+#
+#      nand_flash.cdl
+#
+#      FLASH memory - Support for NAND flash
+#
+# ====================================================================
+#####ECOSGPLCOPYRIGHTBEGIN####
+## -------------------------------------------
+## This file is part of eCos, the Embedded Configurable Operating System.
+## Copyright (C) 1998, 1999, 2000, 2001, 2002 Red Hat, Inc.
+##
+## eCos is free software; you can redistribute it and/or modify it under
+## the terms of the GNU General Public License as published by the Free
+## Software Foundation; either version 2 or (at your option) any later version.
+##
+## eCos is distributed in the hope that it will be useful, but WITHOUT ANY
+## WARRANTY; without even the implied warranty of MERCHANTABILITY or
+## FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+## for more details.
+##
+## You should have received a copy of the GNU General Public License along
+## with eCos; if not, write to the Free Software Foundation, Inc.,
+## 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA.
+##
+## As a special exception, if other files instantiate templates or use macros
+## or inline functions from this file, or you compile this file and link it
+## with other works to produce a work based on this file, this file does not
+## by itself cause the resulting work to be covered by the GNU General Public
+## License. However the source code for this file must still be made available
+## in accordance with section (3) of the GNU General Public License.
+##
+## This exception does not invalidate any other reasons why a work based on
+## this file might be covered by the GNU General Public License.
+## -------------------------------------------
+#####ECOSGPLCOPYRIGHTEND####
+# ====================================================================
+######DESCRIPTIONBEGIN####
+#
+# Author(s):      Alexey Shusharin <mrfinch@mail.ru>
+# Contributors:   
+# Date:           2007-11-16
+# Description:    Driver for NAND FLASH devices.
+#
+#####DESCRIPTIONEND####
+#
+# ====================================================================
+
+cdl_package CYGPKG_DEVS_FLASH_NAND {
+    display       "NAND FLASH memory support"
+    description   "NAND FLASH memory device support"
+    parent        CYGPKG_IO_FLASH
+    active_if	  CYGPKG_IO_FLASH
+    
+    requires      { CYGSEM_IO_FLASH_READ_INDIRECT == 1 }
+	implements    CYGHWR_IO_FLASH_INDIRECT_READS
+
+	compile       nand_flash.c
+
+    include_dir   cyg/io
+    
+    # Error checking and correction
+    cdl_component CYGPKG_DEVS_FLASH_NAND_ECC {
+        display       "Error checking and correction (ECC)"
+        flavor        none
+        description   "
+             NAND devices are subject to data failures that occur during
+             device operation. To ensure data read/write integrity, system
+             error checking and correction (ECC) algorithms should be
+             implemented. This component defines the using of ECC."
+        
+        cdl_interface CYGINT_DEVS_FLASH_NAND_ECC {
+            display  "Number of ECC variants in this configuration"
+            no_define
+            requires 1 == CYGINT_DEVS_FLASH_NAND_ECC
+        }
+        
+        cdl_option CYGSEM_DEVS_FLASH_NAND_ECC_OFF {
+            display       "No ECC algorithm"
+            default_value 0
+            implements    CYGINT_DEVS_FLASH_NAND_ECC
+            description   "
+                Don't use error checking and correction algorithm."
+        }
+        
+        cdl_option CYGSEM_DEVS_FLASH_NAND_ECC_SOFT {
+            display       "Software ECC algorithm"
+            default_value 1
+            implements    CYGINT_DEVS_FLASH_NAND_ECC
+            description   "
+                Use software error checking and correction algorithm which is
+                capable of single bit error correction and 2-bit random detection."
+        }
+    }
+    
+    # Bad block management
+    cdl_component CYGPKG_DEVS_FLASH_NAND_BLOCKMANAGE {
+        display       "Bad block management"
+        flavor        none
+        description   "
+             The NAND Flash devices may contain bad blocks, that shouldn't be
+             used. Additional bad blocks may develop during the lifetime
+             of the device. These blocks need to be managed using bad blocks
+             management. This component defines bad block management algorithm."
+        
+        cdl_interface CYGINT_DEVS_FLASH_NAND_BLOCKMANAGE {
+            display  "Number of bad block management algorithms in this configuration"
+            no_define
+            requires 1 == CYGINT_DEVS_FLASH_NAND_BLOCKMANAGE
+        }
+        
+        cdl_option CYGSEM_DEVS_FLASH_NAND_BBM_INIT {
+            display       "Initial bad blocks management"
+            default_value 0
+            implements    CYGINT_DEVS_FLASH_NAND_BLOCKMANAGE
+            description   "
+                Check only manufacturer marked bad blocks. NAND driver will
+                return error if application try to read/write/erase these blocks."
+        }
+        
+        cdl_component CYGSEM_DEVS_FLASH_NAND_BBM_REPAIR {
+            display       "Bad blocks management with repair area"
+            default_value 1
+            implements    CYGINT_DEVS_FLASH_NAND_BLOCKMANAGE
+            description   "
+                Simple bad block management. NAND driver reserves repair
+                area at the end of the flash and replace bad blocks in main
+                area with blocks from it. New bad blocks will be also replaced.
+                Management information resides in last not bad block."
+                
+            cdl_option CYGNUM_DEVS_FLASH_NAND_BBM_REPAIR_SIZE {
+                display       "Repair area blocks count"
+                flavor        data
+                default_value 32
+                description   "
+                    Number of blocks in repair area. Usually it's equal 3%
+                    of whole flash."
+            }
+        }
+    }
+    
+    cdl_option CYGNUM_DEVS_FLASH_NAND_BUFFER_SIZE {
+        display       "Size of buffer"
+        flavor        data
+        default_value 1024
+        description   "
+            Size of statically linked buffer. It is used for page data and
+            spare area buffer, for bad block table and etc."
+    }
+}
+
+# EOF nand_flash.cdl

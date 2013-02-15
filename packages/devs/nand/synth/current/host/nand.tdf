@@ -1,0 +1,147 @@
+# Target definition file fragment for nand devices
+
+synth_device nand {
+    ## The initial logfile. The default is the image file
+    ## configured via CDL with .log appended.
+    # logfile         "/tmp/synthnand.log"
+    
+    ## Which logging options should be enabled. The full set is read,
+    ## READ, write, WRITE, erase, error. READ logs all of the data read
+    ## as well as the basic event, whereas read only logs the event.
+    ## Similarly WRITE logs the data written as well as the basic event,
+    ## whereas write only logs the event.
+    # log read write erase error
+    # log READ WRITE erase error
+
+    ## Maximum size of a logfile. This is a number followed by a
+    ## unit K, M or G.
+    # max_logfile_size    16M
+
+    ## What should be done when the logfile size is exceeded? The
+    ## default is to close the current logfile, then open it again
+    ## truncating the current contents. This is a bit unfortunate if
+    ## the run finishes shortly after an overflow. The alternative is
+    ## to specify a number of logfiles. Assume four logfiles:
+    ##   first overflow:  <logfile> -> <logfile>.0 and is truncated
+    ##   second overflow: <logfile> -> <logfile>.1 and is truncated
+    ##   third overflow:  <logfile> -> <logfile>.2 and is truncated
+    ##   fourth overflow: <logfile>.0 is deleted, <logfile>-><logfile>.3 and is truncated
+    ## Hence the maximum number of full-sized logfiles at any time
+    ## is 4. The total space used by logfiles is limited to
+    ## (n * max_logfile_size) but there is no risk of losing all
+    ## log data.
+    ##
+    ## A value of 1 gives the default behaviour of only <logfile>
+    # number_of_logfiles 4
+
+    ## Logfiles by themselves are not enough to really figure out
+    ## what is happening. Hence it is also possible to generate
+    ## checkpoint files. <logfile>.checkpoint is created at the
+    ## same time as <logfile>, as a copy of the current nand image
+    ## file. <logfile>.checkpoint gets renamed to <logfile>.checkpoint.0
+    ## when <logfile> gets renamed to <logfile>.0, and a new
+    ## <logfile>.checkpoint gets created from the current nand image.
+    ## Checkpoint files get deleted at the same time as the logfiles.
+    ##
+    ## Obviously checkpointing is expensive in terms of diskspace.
+    #generate_checkpoint_images
+
+    ## Bad block handling.
+    ## NOTE: when experimenting with bad blocks it may be convenient to store
+    ## the bad block settings in another file and source that file from here.
+    ##
+    ## It is possible to mark up to 32 erase blocks as factory-bad. This is
+    ## only used when creating a new image. If you are running applications
+    ## with a single image then changing these blocks will have no effect.
+    # factory_bad 42 17 256 1019
+
+    ## It is also possible to inject bad blocks at run-time, in a variety of
+    ## ways. Typical entries looks like this:
+    ##   inject erase current after rand% 1024 erases
+    ##   inject write current after rand% 1000000 calls repeat disabled
+    ##   inject erase block 1 after 3 block_erases
+    ##   inject write page 9860 after 100000 writes disabled
+    ##
+    ## All entries begin with the keyword inject.
+    ##
+    ## The next word should be one of erase or write, indicating when
+    ## the injection should occur. With real nand chips it is only
+    ## possible to detect that they have gone bad during an erase or
+    ## program operation, although the actual damage may have occurred
+    ## earlier. With the synthetic target nand device, bad block injection
+    ## will only occur during the driver's write or erase call.
+    ##
+    ## The next one or two words indicate which block is affected by
+    ## the injection. "current" means that it is the block specified
+    ## in the erase call to the driver, or the block containing the
+    ## page specified in the write call. This allows for fairly random
+    ## injections of bad blocks, although more heavily used blocks
+    ## will be more prone to going bad. "block <number>" or "page
+    ## <number>" identifies one specific block that will become bad.
+    ## This allows developers to check what happens when e.g. the
+    ## first block in a partition goes bad.
+    ##
+    ## "after" is just syntactic sugar and can be omitted if desired.
+    ## Note that it can be misleading: sometimes bad block injection
+    ## happens during a call, not after.
+    ##
+    ## The next one or two words give a count of how many events have
+    ## to elapse before the bad block injection occurs. This can be
+    ## "rand% <number>" to specify a random interval up to a maximum,
+    ## e.g. "rand% 1024" means that the injection will occur after
+    ## between 1 and 1023 events. Alternatively it can be just a number
+    ## indicating an exact number of events. This can be particularly
+    ## useful when replaying events from a log.
+    ##
+    ## The next word indicates the type of event being counted, and
+    ## can be one of writes, erases, calls, block_erases or
+    ## page_writes. Only the first three can be used when the block
+    ## is "current". All five can be used when one particular block
+    ## is specified.
+    ##    writes       == total number of write calls into the driver
+    ##    erases       == total number of erase calls into the driver
+    ##    calls        == total number of calls (including reads) into the driver
+    ##    block_erases == number of erase calls for this particular block
+    ##    page_writes  == number of write calls for this particular page
+    ##
+    ## In some cases the bad block injection happens during the
+    ## erase or write calls, e.g.:
+    ##
+    ##   inject erase block 1 after 3 block erases
+    ## The block can be erased twice without problems. The third
+    ## erase call affecting this block will cause the block to go bad.
+    ##
+    ##   inject write current after 50000 writes
+    ## During write call number 50000, whichever page is specified
+    ## will go bad.
+    ##
+    ## In other cases the bad block injection happens as soon as
+    ## possible after the specified event, e.g.:
+    ##
+    ##   inject write current after rand% 100000 calls
+    ## Assume the random number generator yields 42567, and call
+    ## 42567 is a read() call instead of a write(). The injection
+    ## will happen during the very next write() call and will affect
+    ## that page, not the one specified for the read().
+    ##
+    ##   inject erase 64 after 4096 erases
+    ## If erase call 4096 affects block 64 then a bad block will be
+    ## injected immediately. Otherwise the injection will remain pending
+    ## until the next time that block 64 is erased.
+    ##
+    ## Next there is an optional keyword "repeat", which can only be
+    ## used when the specified block is "current" - there is no point
+    ## in injecting another fault into a block that has already gone
+    ## bad. Event counting is restarted, and when the count is reached
+    ## again another block will fail.
+    ##
+    ## Finally there is an optional keyword "disabled". This can be
+    ## used to define injections which are inactive by default but
+    ## which can be re-enabled via the GUI interface without having
+    ## to fill in all the fields.
+    
+    # inject erase current after rand% 1024 erases
+    # inject write current after rand% 100000 calls repeat
+    # inject erase block 1 after 3 block_erases
+    # inject write page 9860 after 1000 writes
+}

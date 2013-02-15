@@ -1,0 +1,124 @@
+# ====================================================================
+#
+#      manual_partition.cdl
+#
+#      NAND device manual partition logic
+#
+# ====================================================================
+# ####ECOSGPLCOPYRIGHTBEGIN####                                            
+# -------------------------------------------                              
+# This file is part of eCos, the Embedded Configurable Operating System.   
+# Copyright (C) 2009 eCosCentric Limited.
+#
+# eCos is free software; you can redistribute it and/or modify it under    
+# the terms of the GNU General Public License as published by the Free     
+# Software Foundation; either version 2 or (at your option) any later      
+# version.                                                                 
+#
+# eCos is distributed in the hope that it will be useful, but WITHOUT      
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or    
+# FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License    
+# for more details.                                                        
+#
+# You should have received a copy of the GNU General Public License        
+# along with eCos; if not, write to the Free Software Foundation, Inc.,    
+# 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.            
+#
+# As a special exception, if other files instantiate templates or use      
+# macros or inline functions from this file, or you compile this file      
+# and link it with other works to produce a work based on this file,       
+# this file does not by itself cause the resulting work to be covered by   
+# the GNU General Public License. However the source code for this file    
+# must still be made available in accordance with section (3) of the GNU   
+# General Public License v2.                                               
+#
+# This exception does not invalidate any other reasons why a work based    
+# on this file might be covered by the GNU General Public License.         
+# -------------------------------------------                              
+# ####ECOSGPLCOPYRIGHTEND####                                              
+# ====================================================================
+######DESCRIPTIONBEGIN####
+#
+# Author(s):      wry
+# Date:           2009-03-10
+#
+#####DESCRIPTIONEND####
+#
+# ====================================================================
+
+# This file can be used by drivers to implement manual CDL-driven
+# partition config.
+#
+# To use, create a cdl_component with an appropriate name; 
+# make it boolean or otherwise selectable (you might for example want
+# to turn it off, or pick partitioning strategy from a drop-down list),
+# then choose and set a name-fragment for your device before including
+# this script file along these lines:
+# 
+#	set ::partition_device "SYNTH"
+#	script manual_partition.cdl
+#
+# For a full example, see the synthetic NAND device.
+				 
+
+#######################################################
+
+# Partition table support
+
+# Every NAND board driver has to decide how it will determine the
+# NAND partition layout. In a simple case, there might be just
+# a single partition covering the whole chip. Alternatively,
+# the driver could read a partition table during _devinit, or 
+# the partition layout might be hard-wired (e.g. to inter-operate
+# with some other fixed code).
+
+###
+# Unfortunately, it is not currently possible within CDL to
+# directly access the value of CYGNUM_NAND_MAX_PARTITIONS in a
+# Tcl loop, so we cannot automatically have the second argument
+# to this for loop be { $::part < CYGNUM_NAND_MAX_PARTITIONS } .
+# The best we can do is pick an arbitrary number - we'll choose 4,
+# because that's the same as the default CYGNUM_NAND_MAX_PARTITIONS,
+# and put only that many in the loop. The current limitations of
+# also mean that we have to manually check for each of the four
+# partitions in C - so if you edit the number 4 below, be sure 
+# to tweak the corresponding macro use which makes use of it!
+#
+# (Four ought to be enough for everybody, shouldn't it?)
+###
+
+for { set ::part 0 } { $::part < 4 } { incr ::part } {
+	cdl_option CYGPKG_DEVS_NAND_[set ::partition_device]_PARTITION_[set ::part] {
+		active_if		$::part < CYGNUM_NAND_MAX_PARTITIONS
+		display "Configure partition [set ::part]"
+		flavor	bool
+		default_value	[set ::part] == 0
+		description "
+			Set in order to manually configure partition [set ::part]
+			in CDL."
+	}
+
+	cdl_option CYGNUM_DEVS_NAND_[set ::partition_device]_PARTITION_[set ::part]_BASE {
+		display "Partition [set ::part] base block address"
+		active_if		CYGPKG_DEVS_NAND_[set ::partition_device]_PARTITION_[set ::part] == 1
+		flavor			data
+		legal_values	0 to 0x7fffffff
+		default_value	0
+		description		"
+			The address (number) of the eraseblock at which
+			partition [set ::part] begins."
+	}
+
+	cdl_option CYGNUM_DEVS_NAND_[set ::partition_device]_PARTITION_[set ::part]_SIZE {
+		display "Partition [set ::part] size in blocks"
+		active_if		CYGPKG_DEVS_NAND_[set ::partition_device]_PARTITION_[set ::part] == 1
+		flavor			data
+		legal_values	0 to 0x7fffffff
+		default_value	0
+		description		"
+			The size of partition [set ::part], expressed
+			in eraseblocks. A value of 0 is special and 
+			consumes all the remaining space on the device."
+	}
+}
+# / for loop for partitions.

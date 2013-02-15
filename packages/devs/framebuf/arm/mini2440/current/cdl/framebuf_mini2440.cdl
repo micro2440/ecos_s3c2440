@@ -1,0 +1,232 @@
+# ====================================================================
+#
+#      framebuf_mini2440.cdl
+#
+#      Framebuffer device driver for mini2440
+#
+# ====================================================================
+# ####ECOSGPLCOPYRIGHTBEGIN####                                             
+# -------------------------------------------                               
+# This file is part of eCos, the Embedded Configurable Operating System.    
+# Copyright (C) 2008, 2009 Free Software Foundation, Inc.                   
+#
+# eCos is free software; you can redistribute it and/or modify it under     
+# the terms of the GNU General Public License as published by the Free      
+# Software Foundation; either version 2 or (at your option) any later       
+# version.                                                                  
+#
+# eCos is distributed in the hope that it will be useful, but WITHOUT       
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or     
+# FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License     
+# for more details.                                                         
+#
+# You should have received a copy of the GNU General Public License         
+# along with eCos; if not, write to the Free Software Foundation, Inc.,     
+# 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.             
+#
+# As a special exception, if other files instantiate templates or use       
+# macros or inline functions from this file, or you compile this file       
+# and link it with other works to produce a work based on this file,        
+# this file does not by itself cause the resulting work to be covered by    
+# the GNU General Public License. However the source code for this file     
+# must still be made available in accordance with section (3) of the GNU    
+# General Public License v2.                                                
+#
+# This exception does not invalidate any other reasons why a work based     
+# on this file might be covered by the GNU General Public License.          
+# -------------------------------------------                               
+# ####ECOSGPLCOPYRIGHTEND####                                               
+# ====================================================================
+######DESCRIPTIONBEGIN####
+#
+# Author(s):     Ricky Wu
+# Date:          2011-08-18
+#
+#####DESCRIPTIONEND####
+#========================================================================
+
+cdl_package CYGPKG_DEVS_FRAMEBUF_MINI2440 {
+    display		"MINI2440 board Framebuffer device driver"
+    parent		CYGPKG_IO_FRAMEBUF
+    active_if		CYGPKG_IO_FRAMEBUF
+    hardware
+    include_dir		cyg/framebuf
+    compile			mini2440fb.c
+    compile			-library=libextras.a mini2440fb_init.cxx
+
+    make -priority=1 {
+        <PREFIX>/include/cyg/io/framebufs/mini2440_fb.h :      \
+            <PACKAGE>/src/gen_mini2440fb.tcl                   \
+        <PREFIX>/include/pkgconf/devs_framebuf_mini2440.h
+        tclsh $< $(PREFIX)
+    }
+
+    description "
+        This package provides a framebuffer device driver for 
+        ST MINI2440 EVAL board."
+
+    cdl_component CYGPKG_DEVS_FRAMEBUF_MINI2440_FB0 {
+        display	"Provide framebuffer device fb0"
+        description "
+            The BlackFin SharkBytes target framebuffer driver provides one
+            framebuffe device, named fb0, with a fixed width, height, depth,
+            and colour."
+
+        flavor		    bool
+        default_value       1
+        implements		CYGINT_IO_FRAMEBUF_DEVICES
+        implements		CYGHWR_IO_FRAMEBUF_FUNCTIONALITY_DOUBLE_BUFFER
+        requires		is_substr(CYGDAT_IO_FRAMEBUF_DEVICES, \" fb0 \")
+
+        cdl_option CYGNUM_DEVS_FRAMEBUF_MINI2440_FB0_WIDTH {
+            display		"fb0 width"
+            flavor 		data
+            default_value	320
+        }
+
+        cdl_option CYGNUM_DEVS_FRAMEBUF_MINI2440_FB0_HEIGHT {
+            display		"fb0 height"
+            flavor 		data
+            default_value	240
+        }
+
+        cdl_option CYGNUM_DEVS_FRAMEBUF_MINI2440_FB0_DEPTH {
+            display		"fb0 depth"
+            flavor 		data
+            default_value	16
+            legal_values	16
+        }
+
+
+        cdl_option CYGDAT_DEVS_FRAMEBUF_MINI2440_FB0_FORMAT {
+            display		"fb0 format"
+            flavor		data
+            if { 0 } {
+                legal_values	{ "1BPP_BE_PAL888"  "1BPP_LE_PAL888"
+                    "2BPP_BE_PAL888"  "2BPP_LE_PAL888"
+                    "4BPP_BE_PAL888"  "4BPP_LE_PAL888"
+                    "8BPP_PAL888"     "8BPP_TRUE_332"
+                    "16BPP_TRUE_565"  "16BPP_TRUE_555"
+                    "32BPP_TRUE_0888"
+                }
+            } else {
+                legal_values	{
+                    "16BPP_TRUE_565"
+                }
+            }
+            default_value	{ "16BPP_TRUE_565" }
+            if { 0 } {
+                description "
+                    Each BlackFin SharkBytes target framebuffer device can be configured
+                    to emulate a particular format. This consists of three fields:
+                    depth, endianness, and colour. The depth is in bits per pixel
+                    and can be 1bpp, 2bpp, 4bpp, 8bpp, 16bpp or 32bpp. The endianness
+                    is only relevant for 1bpp, 2bpp and 4bpp devices and affects how
+                    pixels are organized within each byte. Colour can be either
+                    paletted or true colour. 1bpp, 2bpp and 4bpp implies paletted, and
+                    16bpp and 32bpp implies true colour. 8bpp can be either paletted
+                    or true colour. For 1bpp the default palette is monochrome with
+                    colour 0 == black. For 2bpp the default palette is greyscale with
+                    colour 0 == black. For 4bpp the default palette is EGA. For 8bpp
+                    the default palette is VGA. The application can change these
+                    default palettes as required to match the hardware being emulated."
+            } else {
+                description "
+                    The BlackFin SharkBytes framebuffer device has 16bpp-565 true
+                    color."
+            }
+        }
+
+        cdl_component CYGIMP_DEVS_FRAMEBUF_MINI2440_FB0_VIEWPORT {
+            display		    "fb0 provides viewport support"
+            default_value	0
+            implements	    CYGHWR_IO_FRAMEBUF_FUNCTIONALITY_VIEWPORT
+            description "
+                Optionally framebuffer device 0 can support a viewport.
+                In other words only a subset of the framebuffer, the viewport,
+                is actually visible on the display and application code can
+                move this viewport."
+
+            cdl_option CYGNUM_DEVS_FRAMEBUF_MINI2440_FB0_VIEWPORT_WIDTH {
+                display		    "fb0 viewport width"
+                flavor		    data
+                default_value	CYGNUM_DEVS_FRAMEBUF_MINI2440_FB0_WIDTH
+                legal_values	16 to CYGNUM_DEVS_FRAMEBUF_MINI2440_FB0_WIDTH
+            }
+
+            cdl_option CYGNUM_DEVS_FRAMEBUF_MINI2440_FB0_VIEWPORT_HEIGHT {
+                display		    "fb0 viewport height"
+                flavor		    data
+                default_value	CYGNUM_DEVS_FRAMEBUF_MINI2440_FB0_HEIGHT
+                legal_values	16 to CYGNUM_DEVS_FRAMEBUF_MINI2440_FB0_HEIGHT
+            }
+        }
+
+        cdl_option CYGNUM_DEVS_FRAMEBUF_MINI2440_FB0_PAGE_FLIPPING {
+            display		    "fb0 supports page flipping"
+            flavor		    booldata
+            default_value	0
+            legal_values	2 3 4
+            description "
+                Optionally framebuffer device 0 can support page flipping.
+                The device supports between two and four pages, only one
+                of which is visible on the display. This allows code to
+                update one page without disturbing what is currently visible."
+        }
+    }
+
+    cdl_component CYGPKG_DEVS_FRAMEBUF_MINI2440_FUNCTIONALITY {
+        display		"Functionality supported by the enabled framebuffer(s)"
+        flavor		none
+        description "
+            The generic framebuffer code needs configure-time information about
+            functionality of the enabled framebuffer or framebuffers. Usually
+            all this information is fixed by the hardware."
+
+            implements CYGHWR_IO_FRAMEBUF_FUNCTIONALITY_TRUE_COLOUR
+    }
+
+    cdl_component CYGPKG_DEVS_FRAMEBUF_MINI2440_TESTS {
+        display "MINI2440 board framebuffer tests"
+        flavor  data
+        no_define
+        calculated { 
+	    "tests/frametest.c"
+        }
+        description   "
+                This option causes the building of a simple test 
+                for MINI2440 board framebuffer driver."
+    }
+
+    cdl_component CYGPKG_DEVS_FRAMEBUF_MINI2440_OPTIONS {
+        display "Framebuffer build options"
+        flavor  none
+        description   "
+	    Package specific build options including control over
+	    compiler flags used only in building the BlackFin SharkBytes
+            target framebuffer device driver."
+
+        cdl_option CYGPKG_DEVS_FRAMEBUF_MINI2440_CFLAGS_ADD {
+            display "Additional compiler flags"
+            flavor  data
+            no_define
+            #default_value { "-Werror" }
+            default_value { "" }
+            description   "
+                This option modifies the set of compiler flags for building
+                the BlackFin SharkBytes target framebuffer device driver. These flags
+                are used in addition to the set of global flags."
+        }
+
+        cdl_option CYGPKG_DEVS_FRAMEBUF_MINI2440_CFLAGS_REMOVE {
+            display "Suppressed compiler flags"
+            flavor  data
+            no_define
+            default_value { "" }
+            description   "
+                This option modifies the set of compiler flags for building
+                the mini2440 target framebuffer device driver. These flags
+                are removed from the set of global flags if present."
+        }
+    }
+}

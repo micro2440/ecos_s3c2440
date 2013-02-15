@@ -1,0 +1,70 @@
+# ====================================================================
+#
+#      devs_nand_arm_at91sam9.cdl
+#
+#      Common support for the NAND cells found on the Atmel SAM926X
+#      family.
+#
+# ====================================================================
+## ####ECOSGPLCOPYRIGHTBEGIN####                                            
+## -------------------------------------------                              
+## This file is part of eCos, the Embedded Configurable Operating System.   
+## Copyright (C) 2010 eCosCentric Limited           
+##
+## eCos is free software; you can redistribute it and/or modify it under    
+## the terms of the GNU General Public License as published by the Free     
+## Software Foundation; either version 2 or (at your option) any later      
+## version.                                                                 
+##
+## eCos is distributed in the hope that it will be useful, but WITHOUT      
+## ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or    
+## FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License    
+## for more details.                                                        
+##
+## You should have received a copy of the GNU General Public License        
+## along with eCos; if not, write to the Free Software Foundation, Inc.,    
+## 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.            
+##
+## As a special exception, if other files instantiate templates or use      
+## macros or inline functions from this file, or you compile this file      
+## and link it with other works to produce a work based on this file,       
+## this file does not by itself cause the resulting work to be covered by   
+## the GNU General Public License. However the source code for this file    
+## must still be made available in accordance with section (3) of the GNU   
+## General Public License v2.                                               
+##
+## This exception does not invalidate any other reasons why a work based    
+## on this file might be covered by the GNU General Public License.         
+## -------------------------------------------                              
+## ####ECOSGPLCOPYRIGHTEND####                                              
+# ====================================================================
+######DESCRIPTIONBEGIN####
+#
+# Author(s):      wry
+# Contributors:
+# Date:           2010-03-12
+#
+#####DESCRIPTIONEND####
+#
+# ====================================================================
+
+cdl_package CYGPKG_DEVS_NAND_ARM_AT91SAM9 {
+    display       "Common NAND support for the AT91SAM926X family"
+    parent        CYGPKG_HAL_ARM_ARM9
+    active_if     CYGPKG_IO_NAND
+    hardware
+    include_dir   cyg/devs/nand
+    description    "
+        Common support definitions and code for the NAND support
+        hardware found on the Atmel AT91SAM926X family of chips."
+
+    requires    CYGSEM_IO_NAND_ECC_SPLIT_FUNCTION
+
+    cdl_option CYGFUN_DEVS_NAND_ARM_AT91SAM9_SP {
+        display     "Support for small page devices is present"
+        calculated  1
+        no_define
+    }
+}
+
+# EOF devs_nand_arm_at91sam9.cdl

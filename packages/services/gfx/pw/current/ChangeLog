@@ -1,0 +1,62 @@
+2008-04-28  Savin Zlobec  <savinz@users.sourceforge.net>
+
+	* cdl/pwin.cdl:
+	* include/pwin.h:
+	* misc/bdf2pwf:
+	* src/drivers/dd_synth.c:
+	* src/drivers/dd_synth.tcl:
+	* src/drivers/dd_synth.tdf:
+	* src/drivers/dd_skel.txt:
+	* src/pw_bitmap.c:
+	* src/pw_diag.h:
+	* src/pw_draw.c:
+	* src/pw_init.c:
+	* src/pw_rgalloc.c:
+	* src/pw_window.c:
+	* src/i_pwin.h:
+	* src/pw_diag.c:
+	* src/pw_display.c:
+	* src/pw_event.c:
+	* src/pw_region.c:
+	* src/pw_timeout.c:
+	* tests/F9x15.pwf:
+	* tests/slkscr.pwf:
+	* tests/smile.pwb:
+	* tests/pw_test.c:
+	* tests/bdf/F9x15.bdf:
+	* tests/bdf/slkscr.bdf:
+	* tests/bdf/readme.slkscr:
+	Created PWIN package.
+	
+//===========================================================================
+//####ECOSGPLCOPYRIGHTBEGIN####
+// -------------------------------------------
+// This file is part of eCos, the Embedded Configurable Operating System.
+// Copyright (C) 2008 Savin Zlobec 
+//
+// eCos is free software; you can redistribute it and/or modify it under
+// the terms of the GNU General Public License as published by the Free
+// Software Foundation; either version 2 or (at your option) any later version.
+//
+// eCos is distributed in the hope that it will be useful, but WITHOUT ANY
+// WARRANTY; without even the implied warranty of MERCHANTABILITY or
+// FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+// for more details.
+//
+// You should have received a copy of the GNU General Public License along
+// with eCos; if not, write to the Free Software Foundation, Inc.,
+// 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA.
+//
+// As a special exception, if other files instantiate templates or use macros
+// or inline functions from this file, or you compile this file and link it
+// with other works to produce a work based on this file, this file does not
+// by itself cause the resulting work to be covered by the GNU General Public
+// License. However the source code for this file must still be made available
+// in accordance with section (3) of the GNU General Public License.
+//
+// This exception does not invalidate any other reasons why a work based on
+// this file might be covered by the GNU General Public License.
+//
+// -------------------------------------------
+//####ECOSGPLCOPYRIGHTEND####
+//===========================================================================

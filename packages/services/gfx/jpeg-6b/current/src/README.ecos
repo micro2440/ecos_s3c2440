@@ -1,0 +1,5 @@
+Changes: grep for __ECOS__, this will show all changes from the original version
+removed:
+Makefile, config.guess, config.sub, configure, ltconfig, ltmain.sh, install.sh
+djpeg.*, cjpeg.*, jpegtran.*, rdjpgcom.*, wrjpgcom.*, cdjpeg.*, rd*, ansi2knr.*, 
+

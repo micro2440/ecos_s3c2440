@@ -1,0 +1,32 @@
+/*
+ * size       = 8 x 8
+ * used bits  = 64
+ * all bits   = 64
+ * bytes      = 8
+ *
+ * +--------+
+ * |  ####  |
+ * | #    # |
+ * |# #  # #|
+ * |#      #|
+ * |##    ##|
+ * |# #### #|
+ * | #    # |
+ * |  ####  |
+ * +--------+
+ */
+
+static const Pw_Byte smile_bits[] = 
+{
+	0x3C, 0x42, 0xA5, 0x81, 0xC3, 0xBD, 0x42, 0x3C
+};
+
+static const Pw_Bitmap smile_pwb_rec = 
+{
+	8,
+	8,
+	1,
+	(Pw_Byte* const)smile_bits
+};
+
+static Pw_Bitmap* smile_pwb = (Pw_Bitmap* const)&smile_pwb_rec;

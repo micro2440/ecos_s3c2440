@@ -1,0 +1,52 @@
+2010-04-16  Ross Younger  <wry@ecoscentric.com>
+
+	* at91sam926x_nand_common.inl: Make use of the new split calculate
+	functionality for reads and writes (required on some chips).
+	Requires CYGSEM_IO_NAND_ECC_SPLIT_FUNCTION.
+	* at91sam926x_nand_common.h: Added definitions for PIOA, PIOB and
+	(on the 9263) PIOD/E.
+
+2010-03-16  Ross Younger  <wry@ecoscentric.com>
+
+	* at91sam926x_nand_common_sp.inl: Created. ECC and OOB support
+	for small-page NAND devices.
+
+2010-03-12  Ross Younger  <wry@ecoscentric.com>
+
+	* New package. Common NAND support routines for the AT91SAM926X family.
+
+//===========================================================================
+// ####ECOSGPLCOPYRIGHTBEGIN####                                            
+// -------------------------------------------                              
+// This file is part of eCos, the Embedded Configurable Operating System.   
+// Copyright (C) 2010 eCosCentric Limited.
+//
+// eCos is free software; you can redistribute it and/or modify it under    
+// the terms of the GNU General Public License as published by the Free     
+// Software Foundation; either version 2 or (at your option) any later      
+// version.                                                                 
+//
+// eCos is distributed in the hope that it will be useful, but WITHOUT      
+// ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or    
+// FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License    
+// for more details.                                                        
+//
+// You should have received a copy of the GNU General Public License        
+// along with eCos; if not, write to the Free Software Foundation, Inc.,    
+// 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.            
+//
+// As a special exception, if other files instantiate templates or use      
+// macros or inline functions from this file, or you compile this file      
+// and link it with other works to produce a work based on this file,       
+// this file does not by itself cause the resulting work to be covered by   
+// the GNU General Public License. However the source code for this file    
+// must still be made available in accordance with section (3) of the GNU   
+// General Public License v2.                                               
+//
+// This exception does not invalidate any other reasons why a work based    
+// on this file might be covered by the GNU General Public License.         
+// -------------------------------------------                              
+// ####ECOSGPLCOPYRIGHTEND####                                              
+//===========================================================================
+	
+

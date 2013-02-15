@@ -1,0 +1,216 @@
+2010-04-20  Ross Younger  <wry@eCosCentric.com>
+
+	* nand_ecc.h nand.c: Expand ECC interface to allow different
+	calculate functions during reads and writes, as needed by some
+	hardware ECC implementations. Defines
+	CYGSEM_IO_NAND_ECC_SPLIT_FUNCTION.
+	* nandunit.c nand_eccequiv.c nand_sweccwalk.c: Fix up.
+	* nand.c nand_oob.c: Fix uninitialised OOB issue.
+	* tests/nand_readwrite.c: Add further checks to confirm
+	the spare area works as expected.
+
+2010-03-16  Ross Younger  <wry@eCosCentric.com>
+
+	* tests: Prefix test names with "nand", for consistency.
+	* utils/erasenand.c: Fix off-by-one error.
+
+2010-03-12  Ross Younger  <wry@eCosCentric.com>
+
+	* nand.c: Short-cut zero-length part-reads; don't pass them on to the
+	underlying driver.
+	* nand.h: Correct off-by-one error (in the safe direction) in the
+	definition of CYG_NAND_PARTITION_NBLOCKS.
+
+2009-11-24  Ross Younger  <wry@eCosCentric.com>
+
+	* tests/rwbenchmark.c: Add bulk-read and bulk-write modes
+	which measure time for a whole block. Improve timing output 
+	to scale itself to milliseconds where appropriate.
+
+	* nand_ecc.h, nand_ecc_mtd_fast.c: Expose the byte-parity table
+	for use in other packages.
+
+2009-11-19  Ross Younger  <wry@eCosCentric.com>
+
+	Significant interface change.
+	* nand.h: Application-facing functions now take partition-relative
+	addresses, not device-relative addresses. 
+	Rename functions cyg_nand_* -> cyg_nandp_* to reflect this (change the
+	interface, change the name).
+	Create helper macros CYG_NAND_PARTITION_N{BLOCKS,PAGES}.
+	Rename NAND_* macros to CYG_NAND_*.
+	* tests, utils: Update to new semantics.
+	* nand.cdl: Declare CYGSEM_IO_NAND_APPINTERFACE_VERSION 
+	- calculated, 2 - and add a tripwire to ensure YAFFS is updated.
+	* docs/nand.sgml: Updated to suit.
+
+2009-11-17  Ross Younger  <wry@eCosCentric.com>
+
+	* nand.c: Cosmetic messages fix
+
+2009-11-13  Ross Younger  <wry@eCosCentric.com>
+
+	* utils/erasenand.c: Fix fencepost error
+	* nand_device.h nand.c: Further refine CYGSEM_IO_NAND_USE_BBT,
+	drop the relevant parts of the struct when not enabled.
+	* utils/erase_bbt_dangerous.c: Build fix for non-default config
+	* nand_bbt.c: Fix logic error on initial scan
+
+2009-11-12  Ross Younger  <wry@eCosCentric.com>
+
+	* nand.c: Add timing instrumentation hooks.
+	* nand.cdl: Add CYGSEM_IO_NAND_INSTRUMENT_TIMING to mediate them.
+	* misc/timetag_to_csv.pl: Helper perl script for use with them.
+
+2009-11-09  Ross Younger  <wry@eCosCentric.com>
+
+	* nand.h: Rationalise interface:
+	  * read_page: now only reads a whole page and/or its spare.
+	  * read_part_page: Created.  Allows part-pages and optionally
+	  not checking ECC.
+	  * write_page: now only writes a whole page and/or its spare.
+	  + nand_ecc.h: Drop earlier attempt to support sub-page ECC.
+	* tests/readwrite.c: Test out cyg_nand_read_part_page().
+	* tests: Update for interface tweak.
+	* nand_bbt.c: Rationalise BBT finding into one place and fix to 
+	better cope with the situation where only one BBT block had
+	been written. Cure an internal race.
+	* nand_ecc_mtd_fast.c: Speed up checking phase.
+
+2009-11-06  Ross Younger  <wry@eCosCentric.com>
+
+	* nand_ecc_mtd_fast.c: Created. Complete rewrite of software 
+	ECC for massive performance boost. In summary, use all 32 bits
+	of a register at once, and part-unroll the operation. (Also
+	rewrote the ecc repair function to drop the dependency on the
+	previous (imported) code.
+	* tests: Update to suit the above.
+	* tests/eccequiv.c: Created (used to test new ECC implementation).
+
+2009-10-28  Ross Younger  <wry@eCosCentric.com>
+
+	* nand.cdl, nand.c, nand_bbt.[ch]: CYGSEM_IO_NAND_USE_BBT
+	implemented (default on).  Updated tests and utils to suit.
+	* nand.cdl: Add convenience options to build the utils as well
+	as the tests.
+	* tests/sweccwalk.c: Created (software ECC bit-walker and repair
+	consistency checks)
+	* nand.sgml: Updated for the above. Documented ECC algorithm
+	interface.
+	* tests/rwbenchmark.c: Have rwbenchmark use randomised test data
+	and check its work for better validity.
+
+2009-10-08  Ross Younger  <wry@eCosCentric.com>
+
+	* nand_ecc.h, nand.c, nand_ecc_mtd.c: Expand ECC interface
+	to better allow hardware assistance.
+	* nand_device.h, nand.cdl: Change function set ("v2"), add cdl marker
+	* nand.c: Implement v2 read/write, updated devinit
+	* nand.c, nand_bbt.h: Internally expose "raw" page read/write fns
+	* nand_oob.c, nand_oob.h: Create packed_{read,write} fns
+	* nand_bbt.c: Use raw page read/write fns, packed read/write fns
+	- and sanity test them on startup
+	* nand.sgml: Document driver interface change.
+	* rwbenchmark.c: Check that we read the requisite amount of data.
+
+2009-09-28  Ross Younger  <wry@eCosCentric.com>
+
+	* tests: Don't put large arrays on stack.
+
+2009-08-28  Ross Younger  <wry@eCosCentric.com>
+
+	* doc/nand.sgml: Update. Split entries for NAND device drivers out into
+	their individual driver packages.
+	* tests: Moved bbt.c and multipagebbt.c into devs/nand/synth/
+
+2009-07-28  Ross Younger  <wry@eCosCentric.com>
+
+	* utils: Add erasenand.c; build fix erase_bbt_dangerous.c
+
+2009-07-21  Ross Younger  <wry@eCosCentric.com>
+
+	* nand_bbt.c: Fix BBT initialisation bug
+
+2009-07-17  Ross Younger  <wry@eCosCentric.com>
+
+	* nand.sgml: Prep for inclusion in docbuilds
+
+2009-07-09 Ross Younger  <wry@eCosCentric.com>
+
+	* nand_bbt.c: Fix corner case arising from a write failure on a BBT block.
+
+2009-07-02 Ross Younger  <wry@eCosCentric.com>
+
+	* tests: Add rwbenchmark.c
+
+2009-06-17 Ross Younger  <wry@eCosCentric.com>
+
+	* Global: Create a per-device lock to remove this burden from drivers.
+	Retab for consistency with the rest of eCos.
+	* cdl: Create CYGNUM_NAND_PAGEBUFFER; NAND drivers must impose
+	requirements on this according to the largest device they support.
+	Add dependency on stdlib.
+	* nand.c, util.c: Add more assertions.
+	* nand_app.h: Renamed to nand.h for consistency with other packages
+	* nand_bbt.c: Refactor to use the pagebuffer to not be so stack-greedy.
+	Properly incorporate both on-chip BBTs in case we were interrupted
+	when writing out. Add more assertions.
+	* nand_bbt.h: Move BLOCK2PAGEADDR and PAGE2BLOCKADDR to util.h.
+	Header made internal.
+	* nand_ecc.h: Rename ECCPERPAGE to CYG_NAND_ECCPERPAGE.
+	* nand_oob.h: Rename NAND_APPLICATION_OOB to CYG_NAND_APPLICATION_OOB,
+	similarly for OOB_MAX_ECC_SLOTS and OOB_MAX_APP_SLOTS.
+	* doc: Linewrap for consistency
+	* tests: Tweak to make more likely to work in a minimal config.
+	Move mkvector.c and ar4test.c into misc/.
+	bbt doesn't mandate synth.
+	eccdamage moved to synth.
+
+2009-06-02 Ross Younger  <wry@eCosCentric.com>
+
+	* cyg_nand_init: Removed in toto, in favour of a static constructor.
+	* Global: Replaced all use of diag_printf with new NAND_ERROR macro.
+
+2009-06-01 Ross Younger  <wry@eCosCentric.com>
+
+	* src/util.c include/util.h: Created
+
+2009-03-02 Ross Younger  <wry@eCosCentric.com>
+
+	* New package. NAND flash access library.
+
+//===========================================================================
+// ####ECOSGPLCOPYRIGHTBEGIN####                                            
+// -------------------------------------------                              
+// This file is part of eCos, the Embedded Configurable Operating System.   
+// Copyright (C) 2009 eCosCentric Limited.
+//
+// eCos is free software; you can redistribute it and/or modify it under    
+// the terms of the GNU General Public License as published by the Free     
+// Software Foundation; either version 2 or (at your option) any later      
+// version.                                                                 
+//
+// eCos is distributed in the hope that it will be useful, but WITHOUT      
+// ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or    
+// FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License    
+// for more details.                                                        
+//
+// You should have received a copy of the GNU General Public License        
+// along with eCos; if not, write to the Free Software Foundation, Inc.,    
+// 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.            
+//
+// As a special exception, if other files instantiate templates or use      
+// macros or inline functions from this file, or you compile this file      
+// and link it with other works to produce a work based on this file,       
+// this file does not by itself cause the resulting work to be covered by   
+// the GNU General Public License. However the source code for this file    
+// must still be made available in accordance with section (3) of the GNU   
+// General Public License v2.                                               
+//
+// This exception does not invalidate any other reasons why a work based    
+// on this file might be covered by the GNU General Public License.         
+// -------------------------------------------                              
+// ####ECOSGPLCOPYRIGHTEND####                                              
+//===========================================================================
+	
+

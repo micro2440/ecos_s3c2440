@@ -1,0 +1,206 @@
+# ====================================================================
+#
+#      nand_synth.cdl
+#
+#      Synthetic NAND device
+#
+# ====================================================================
+# ####ECOSGPLCOPYRIGHTBEGIN####                                            
+# -------------------------------------------                              
+# This file is part of eCos, the Embedded Configurable Operating System.   
+# Copyright (C) 2009 eCosCentric Limited.
+#
+# eCos is free software; you can redistribute it and/or modify it under    
+# the terms of the GNU General Public License as published by the Free     
+# Software Foundation; either version 2 or (at your option) any later      
+# version.                                                                 
+#
+# eCos is distributed in the hope that it will be useful, but WITHOUT      
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or    
+# FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License    
+# for more details.                                                        
+#
+# You should have received a copy of the GNU General Public License        
+# along with eCos; if not, write to the Free Software Foundation, Inc.,    
+# 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.            
+#
+# As a special exception, if other files instantiate templates or use      
+# macros or inline functions from this file, or you compile this file      
+# and link it with other works to produce a work based on this file,       
+# this file does not by itself cause the resulting work to be covered by   
+# the GNU General Public License. However the source code for this file    
+# must still be made available in accordance with section (3) of the GNU   
+# General Public License v2.                                               
+#
+# This exception does not invalidate any other reasons why a work based    
+# on this file might be covered by the GNU General Public License.         
+# -------------------------------------------                              
+# ####ECOSGPLCOPYRIGHTEND####                                              
+# ====================================================================
+######DESCRIPTIONBEGIN####
+#
+# Author(s):      wry
+# Date:           2009-03-05
+#
+#####DESCRIPTIONEND####
+#
+# ====================================================================
+
+cdl_package CYGPKG_DEVS_NAND_SYNTH {
+    display         "Synthetic NAND device"
+    parent          CYGPKG_IO_NAND
+    active_if		CYGPKG_IO_NAND && CYGPKG_HAL_SYNTH
+	compile			-library=libextras.a nand_synth.c
+	implements		CYGHWR_IO_NAND_DEVICE
+    requires        CYGINT_ISO_RAND
+    requires        CYGINT_ISO_ERRNO_CODES
+    requires        CYGINT_ISO_STRING_STRFUNCS
+    requires        { CYGSEM_IO_NAND_INTERFACE_VERSION >= 2 }
+
+    description     "
+        This package provides support for a synthetic NAND device.
+	"
+
+	cdl_component CYGPKG_DEVS_NAND_SYNTH_OPTIONS {
+		display "Synthetic NAND driver build options"
+		flavor  none
+		description   "
+			Package specific build options including control over
+			compiler flags used only in building the synthetic NAND
+			target."
+
+		cdl_option CYGPKG_DEVS_NAND_SYNTH_CFLAGS_ADD {
+			display "Additional compiler flags"
+			flavor  data
+			no_define
+			default_value { "-Wall -Werror" }
+			description   "
+				This option modifies the set of compiler flags for
+				building the synthetic NAND target. These flags
+				are used in addition to the set of global flags."
+		}
+
+		cdl_option CYGPKG_DEVS_NAND_SYNTH_CFLAGS_REMOVE {
+			display "Suppressed compiler flags"
+			flavor  data
+			no_define
+			default_value { "" }
+			description   "
+				This option modifies the set of compiler flags for
+				building the synthetic NAND target. These flags
+				are removed from the set of global flags if present."
+		}
+
+	}
+
+	cdl_option CYGNUM_NAND_SYNTH_PAGESIZE {
+		display 		"Page size"
+		flavor 			data
+		legal_values 	{ 512 2048 }
+		# 256 generally not yet implemented; see nand_oob.c
+		default_value 	2048
+        requires        ( CYGNUM_NAND_PAGEBUFFER >= CYGNUM_NAND_SYNTH_PAGESIZE )
+		description		"
+			Sets the page size of the synthetic NAND device.
+			This option also affects the size of the synthetic spare 
+			(Out Of Band) area for each page: it is always 8 bytes OOB 
+			per 256 bytes of data."
+	}
+
+	cdl_option CYGNUM_NAND_SYNTH_SPARE_PER_PAGE {
+		display			"Spare area per page"
+		flavor			data
+		calculated		(CYGNUM_NAND_SYNTH_PAGESIZE * 8 / 256)
+		description		"This calculated option shows you the size of the Spare (OOB) area for each page, in bytes."
+	}
+
+
+	cdl_option CYGNUM_NAND_SYNTH_PAGES_PER_BLOCK {
+		display			"Pages per eraseblock"
+		flavor			data
+		legal_values	{ 32 64 128 256 }
+		default_value	32
+	}
+
+	cdl_option CYGNUM_NAND_SYNTH_BLOCK_COUNT {
+		display			"Number of eraseblocks"
+		flavor			data
+		legal_values	{ 256 512 1024 2048 4096 8192 }
+		default_value	1024
+	}
+
+	cdl_option CYGNUM_NAND_SYNTH_BLOCKSIZE {
+		display			"Erase block size (kbytes)"
+		flavor			data
+		calculated		(CYGNUM_NAND_SYNTH_PAGESIZE * CYGNUM_NAND_SYNTH_PAGES_PER_BLOCK / 1024)
+		description		"This calculated option shows you the total data size of an eraseblock, in kilobytes."
+	}
+
+	cdl_option CYGNUM_NAND_SYNTH_CHIPSIZE {
+		display			"Total chip size (kbytes)"
+		flavor			data
+		calculated		(CYGNUM_NAND_SYNTH_BLOCKSIZE * CYGNUM_NAND_SYNTH_BLOCK_COUNT)
+		description		"This calculated option shows you the total data size of the whole synthetic device, in kilobytes."
+	}
+
+	cdl_option CYGDAT_NAND_SYNTH_FILENAME {
+		display			"Filename for synth nand"
+		flavor			data
+		default_value	{ "\"synth_nand.dat\"" }
+	}
+
+	cdl_option CYGSEM_NAND_SYNTH_RANDOMLY_LOSE {
+		display			"Simulate random bit errors"
+		flavor			bool
+		default_value	0
+		description		"This option causes the synthetic NAND device to suffer frequent random bit flips, in order to confirm that they are handled properly (in conjunction with the eccdamage test)."
+	}
+
+	cdl_option CYGSEM_NAND_SYNTH_ALLOW_MULTIPLE_WRITES {
+		display			"Allow multiple writes without erasing"
+		flavor			bool
+		default_value	0
+		description		"Some NAND parts - mostly
+            small-page devices - allow pages to be programmed multiple
+            times without an intervening erase. This driver does
+            not normally allow such writes, but can be made to by
+            setting this option. Note that in this mode, this driver
+            follow the normal NAND semantics - i.e. that a programming
+            operation can only clear a bit from 1 to 0."
+	}
+
+	# Partition table support
+
+	# Every NAND board driver has to decide how it will determine the
+	# NAND partition layout. In a simple case, there might be just
+	# a single partition covering the whole chip. Alternatively,
+	# the driver could read a partition table during _devinit, or 
+	# the partition layout might be hard-wired (e.g. to inter-operate
+	# with some other fixed code).
+	#
+	# At the moment we expose only manual partition config.
+	# Further options may follow later.
+
+	cdl_component CYGSEM_DEVS_NAND_SYNTH_PARTITION_MANUAL_CONFIG {
+		display "Manual partition configuration"
+		flavor	bool
+		default_value	1
+		description "
+			Set in order to use CDL to manually configure the
+			partitions of the synthetic NAND target."
+
+		set ::partition_device "SYNTH"
+		script manual_partition.cdl
+	}
+
+    cdl_option CYGPKG_DEVS_NAND_SYNTH_TESTS {
+        display "Synthetic NAND device tests"
+        flavor data
+        no_define
+        calculated { "tests/eccdamage tests/bbt tests/multipagebbt" }
+        description "
+        This option specifies the set of tests for the synthetic NAND device."
+    }
+
+}
+

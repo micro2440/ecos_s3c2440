@@ -1,0 +1,150 @@
+# ====================================================================
+#
+#      touch_synth.cdl
+#
+#      Touchscreen device driver for the framebuffer for the synthetic target.
+#
+# ====================================================================
+# ####ECOSGPLCOPYRIGHTBEGIN####                                             
+# -------------------------------------------                               
+# This file is part of eCos, the Embedded Configurable Operating System.    
+# Copyright (C) 2010 Free Software Foundation, Inc.                         
+#
+# eCos is free software; you can redistribute it and/or modify it under     
+# the terms of the GNU General Public License as published by the Free      
+# Software Foundation; either version 2 or (at your option) any later       
+# version.                                                                  
+#
+# eCos is distributed in the hope that it will be useful, but WITHOUT       
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or     
+# FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License     
+# for more details.                                                         
+#
+# You should have received a copy of the GNU General Public License         
+# along with eCos; if not, write to the Free Software Foundation, Inc.,     
+# 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.             
+#
+# As a special exception, if other files instantiate templates or use       
+# macros or inline functions from this file, or you compile this file       
+# and link it with other works to produce a work based on this file,        
+# this file does not by itself cause the resulting work to be covered by    
+# the GNU General Public License. However the source code for this file     
+# must still be made available in accordance with section (3) of the GNU    
+# General Public License v2.                                                
+#
+# This exception does not invalidate any other reasons why a work based     
+# on this file might be covered by the GNU General Public License.          
+# -------------------------------------------                               
+# ####ECOSGPLCOPYRIGHTEND####                                               
+# ====================================================================
+######DESCRIPTIONBEGIN####
+#
+# Author(s):     bartv
+# Date:          2005-10-24
+# Author(s):     Rutger Hofman
+# Date:          2010-07-20
+#
+#####DESCRIPTIONEND####
+#========================================================================
+
+cdl_package CYGPKG_DEVS_TOUCH_SYNTH {
+    display		"Synthetic Target Touchscreen device driver for Framebuffer"
+    parent		CYGPKG_DEVS_FRAMEBUF_SYNTH
+    active_if           CYGPKG_IO_FILEIO
+    requires            CYGPKG_IO
+    requires            CYGFUN_KERNEL_API_C
+    active_if		CYGPKG_DEVS_FRAMEBUF_SYNTH
+    hardware
+    include_dir         cyg/io
+    # compile             -library=libextras.a synthts.c
+    compile             synthts.c
+
+    description "
+        This package provides a touchscreen device driver for the framebuffer
+        of the synthetic target."
+
+    for { set _fb 0 } { $_fb < 4 } { incr _fb } {
+        cdl_component CYGPKG_DEVS_TOUCHSCREEN_SYNTH_FB$_fb {
+            display	"Provide touchscreen for framebuffer device fb$_fb"
+            description "
+                The synthetic target framebuffer driver can provide up to
+                four framebuffer devices, named fb0 to fb3. Each device
+                can have a touchscreen, implemented by the mouse.
+                This option enables device fb${_fb}_TOUCHSCREEN"
+
+            flavor		    bool
+            default_value	[expr $_fb ? 0 : 1]
+            requires		is_substr(CYGDAT_IO_FRAMEBUF_DEVICES, \" fb[set _fb] \")
+
+        }
+
+        # Eliminate any touchscreen devices that are not enabled by the framebuffer config.
+        # active_if CYGPKG_DEVS_FRAMEBUF_SYNTH_FB[set _fb]_TOUCHSCREEN
+    }
+
+#    cdl_component CYGPKG_DEVS_TOUCHSCREEN_SYNTH_FB0 {
+#        display	"Provide touchscreen for framebuffer device fb0"
+#        description "
+#            The synthetic target framebuffer driver can provide up to
+#            four framebuffer devices, named fb0 to fb3. Each device
+#            can have a touchscreen, implemented by the mouse.
+#            This option enables device TOUCHSCREEN_SYNTH_FB0"
+#
+#        flavor		    bool
+#        default_value	1
+#        requires		is_substr(CYGDAT_IO_FRAMEBUF_DEVICES, \" fb0 \")
+#
+#    }
+#
+#    cdl_option CYGDAT_DEVS_TOUCH_SYNTH_NAME0 {
+#        display "Device name for the touch screen driver"
+#        flavor data
+#        default_value {"\"/dev/ts0\""}
+#        description " This option specifies the name of the touch screen device"
+#    }
+#
+#    # Eliminate any touchscreen devices that are not enabled by the framebuffer config.
+#    requires CYGPKG_DEVS_FRAMEBUF_SYNTH_FB0_TOUCHSCREEN
+
+    cdl_option CYGNUM_DEVS_TOUCH_SYNTH_EVENT_BUFFER_SIZE {
+        display "Number of events the driver can buffer"
+        flavor data
+        default_value { 32 }
+        description "
+            This option defines the size of the touchscreen device
+            internal buffer. The cyg_io_read() function will return
+            as many of these as there is space for in the buffer
+            passed."
+    }
+
+    cdl_component CYGPKG_DEVS_TOUCH_SYNTH_OPTIONS {
+        display "Touchscreen build options"
+        flavor  none
+        description   "
+	    Package specific build options including control over
+	    compiler flags used only in building the synthetic
+            target touchscreen device driver."
+
+        cdl_option CYGPKG_DEVS_TOUCH_SYNTH_CFLAGS_ADD {
+            display "Additional compiler flags"
+            flavor  data
+            no_define
+            default_value { "-Wall -Werror" }
+            description   "
+                This option modifies the set of compiler flags for building
+                the synthetic target framebuffer device driver. These flags
+                are used in addition to the set of global flags."
+        }
+
+        cdl_option CYGPKG_DEVS_TOUCH_SYNTH_CFLAGS_REMOVE {
+            display "Suppressed compiler flags"
+            flavor  data
+            no_define
+            default_value { "" }
+            description   "
+                This option modifies the set of compiler flags for building
+                the synthetic target framebuffer device driver. These flags
+                are removed from the set of global flags if present."
+        }
+    }
+}

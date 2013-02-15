@@ -1,0 +1,81 @@
+2010-03-16	Ross Younger  <wry@eCosCentric.com>
+
+	* Break out large page device specific support into k9_generic_lp.inl,
+	add CYGFUN_NAND_SAMSUNG_K9_LP
+	* Add small page device support to k9_generic_sp.inl (mediated by
+	CYGFUN_NAND_SAMSUNG_K9_SP)
+	* Add K9G12 chip support (small-page)
+
+2010-03-12	Ross Younger  <wry@eCosCentric.com>
+
+	* k9fxx08x0x.{c,inl}: Renamed to k9_generic.{c,inl}.
+	* Add K9F2G chip support
+
+2009-11-13  Ross Younger  <wry@eCosCentric.com>
+
+	* Don't provide BBT data when the NAND layer doesn't call for it.
+
+2009-11-09  Ross Younger  <wry@eCosCentric.com>
+
+	* Add read_part_page function.
+
+2009-10-02  Ross Younger  <wry@eCosCentric.com>
+
+	* Update driver to expose v2 device functions.
+
+2009-09-02  Ross Younger  <wry@eCosCentric.com>
+
+	* nand_k9.sgml: Created (by breaking up docs in io/nand/)
+
+2009-07-02  Ross Younger  <wry@eCosCentric.com>
+
+	* k9fxx08x0x.inl: Don't unnecessarily reset the chip. Minor
+	optimisation to k9_write_page.
+
+2009-06-16  Ross Younger  <wry@eCosCentric.com>
+
+	* Refactor to have a chip-level priv struct with per-chip in-RAM BBT.
+	* include/k9fxx08x0x.h: Created.
+	* Properly allow platform to define where the locking should be.
+	* Replace use of diag_printf with NAND_ERROR.
+	* Retab for consistency with other eCos sources.
+
+2009-03-04  Ross Younger  <wry@eCosCentric.com>
+
+	* New package. Samsung K9F1G08U0A NAND flash chip.
+
+//===========================================================================
+// ####ECOSGPLCOPYRIGHTBEGIN####                                            
+// -------------------------------------------                              
+// This file is part of eCos, the Embedded Configurable Operating System.   
+// Copyright (C) 2009 eCosCentric Limited.
+//
+// eCos is free software; you can redistribute it and/or modify it under    
+// the terms of the GNU General Public License as published by the Free     
+// Software Foundation; either version 2 or (at your option) any later      
+// version.                                                                 
+//
+// eCos is distributed in the hope that it will be useful, but WITHOUT      
+// ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or    
+// FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License    
+// for more details.                                                        
+//
+// You should have received a copy of the GNU General Public License        
+// along with eCos; if not, write to the Free Software Foundation, Inc.,    
+// 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.            
+//
+// As a special exception, if other files instantiate templates or use      
+// macros or inline functions from this file, or you compile this file      
+// and link it with other works to produce a work based on this file,       
+// this file does not by itself cause the resulting work to be covered by   
+// the GNU General Public License. However the source code for this file    
+// must still be made available in accordance with section (3) of the GNU   
+// General Public License v2.                                               
+//
+// This exception does not invalidate any other reasons why a work based    
+// on this file might be covered by the GNU General Public License.         
+// -------------------------------------------                              
+// ####ECOSGPLCOPYRIGHTEND####                                              
+//===========================================================================
+	
+

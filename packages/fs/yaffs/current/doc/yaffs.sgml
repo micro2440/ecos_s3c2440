@@ -1,0 +1,685 @@
+<!-- {{{ Banner                         -->
+
+<!-- =============================================================== -->
+<!--                                                                 -->
+<!--     yaffs.sgml                                                  -->
+<!--                                                                 -->
+<!--     Documentation for the eCos port of the YAFFS filesystem.    -->
+<!--                                                                 -->
+<!-- =============================================================== -->
+<!-- ####ECOSDOCCOPYRIGHTBEGIN####                                   -->
+<!-- =============================================================== -->
+<!-- Copyright (C) 2009 eCosCentric Ltd.                             -->
+<!-- This material may be distributed only subject to the terms      -->
+<!-- and conditions set forth in the Open Publication License, v1.0  -->
+<!-- or later (the latest version is presently available at          -->
+<!-- http://www.opencontent.org/openpub/)                            -->
+<!-- Distribution of the work or derivative of the work in any       -->
+<!-- standard (paper) book form is prohibited unless prior           -->
+<!-- permission obtained from the copyright holder                   -->
+<!-- =============================================================== -->
+<!-- ####ECOSDOCCOPYRIGHTEND####                                     -->
+<!-- =============================================================== -->
+<!-- #####DESCRIPTIONBEGIN####                                       -->
+<!--                                                                 -->
+<!-- Author(s):   wry                                                -->
+<!-- Date:        2009-05-28                                         -->
+<!--                                                                 -->
+<!-- ####DESCRIPTIONEND####                                          -->
+<!-- =============================================================== -->
+
+<!-- }}} -->
+
+<!-- ### Uncomment to make a standalone book:
+<!DOCTYPE book  PUBLIC "-//OASIS//DTD DocBook V3.1//EN">
+<book id="fs-yaffs-book">
+    <bookinfo>
+        <title>The YAFFS filesystem for eCos</title>
+        <copyright><year>2009</year><holder>eCosCentric Limited</holder></copyright>
+        <legalnotice>
+            <title>Documentation licensing terms</title>
+            <para>This material may be distributed only subject to the terms
+                and conditions set forth in the Open Publication License, v1.0
+                or later (the latest version is presently available at
+                <ulink url="http://www.opencontent.org/openpub/">http://www.opencontent.org/openpub/</ulink>).
+            </para>
+            <para>
+                Distribution of the work or derivative of the work in any
+                standard (paper) book form is prohibited unless prior
+                permission is obtained from the copyright holder.
+            </para>
+        </legalnotice>
+    </bookinfo>
+     !   /### -->
+
+<part id="fs-yaffs">
+<title>The YAFFS filesystem</title>
+
+<chapter id="yaffs-overview-c">
+<title>What is YAFFS?</title>
+
+<para>
+YAFFS is a filesystem for NAND flash chips.
+</para>
+
+<para>
+YAFFS is accessed through the FILEIO package which presents a standard 
+POSIX compatible IO interface through which applications use standard 
+open(), read(), write() and close() calls.
+</para>
+
+<para>
+YAFFS is a <emphasis>journalling</emphasis> filesystem 
+with <emphasis>wear-levelling</emphasis>. It is 
+particularly suited to NAND flash parts, having been
+designed with their unique properties in mind.
+The use of traditional filesystems (FAT, ext2, etc) which do not have
+these features is not recommended on such chips because their design
+requires the use of fixed address on the underlying hardware.
+Such behaviour causes flash sectors to wear out, the consequence of
+which would typically be to cause the whole device to become unbootable.
+</para>
+
+<para>
+YAFFS also provides a high degree of robustness, which is usually
+a requirement of embedded devices.
+A power failure or other crash can leave a traditional filesystem
+in an inconsistent state which is often difficult to repair,
+especially in the field.
+</para>
+
+<para>
+YAFFS can also be built into RedBoot, which allows you to store
+application images on NAND flash and boot them with
+RedBoot's usual flexible scripting system.
+</para>
+
+<para>
+For more information about NAND flash chips,
+how they differ from NOR flash parts
+and other ways to access them, refer to the documentation for the
+<xref linkend="io-nand-overview" endterm="io-nand-short">.
+</para>
+
+<para>
+For more information about YAFFS itself, refer to 
+<ulink url="http://www.yaffs.net/">yaffs.net</ulink>.
+</para>
+</chapter>
+
+<chapter id="yaffs-getstarted"><title>Getting started with YAFFS</title>
+
+<sect1 id="yaffs-licensing"><title>Licensing considerations</title>
+<para>
+Before you can use YAFFS, you must accept its license.
+<emphasis>YAFFS is not covered by the standard eCos license.</emphasis>
+You will be reminded of your license to use YAFFS when you install it.
+</para>
+
+<para>
+Most users will only have access to YAFFS under the GNU GPL. 
+This costs nothing to license. However this usually means that if you ever
+distribute your application,
+you must do so under the GPL.
+This requires you to publish or otherwise make all of your application,
+eCos and everything else you link with it available as source code.
+For full details refer to the text of the
+<ulink url="http://www.gnu.org/licenses/old-licenses/gpl-2.0.html">GPL
+(v2)</ulink>.
+</para>
+
+<para>
+If you cannot accept the restrictions and obligations of the GPL, 
+YAFFS for eCos is available under a proprietary license, for a fee.
+Details are available on request from
+<ulink url="http://www.ecoscentric.com/">eCosCentric</ulink> or
+<ulink url="http://www.yaffs.net/yaffs-licences">Aleph One</ulink>.
+</para>
+</sect1>
+
+<sect1 id="yaffs-install"><title>Installation</title>
+<para>
+YAFFS is supplied as an EPK (eCos Package) file.
+</para>
+
+<sect2 id="yaffs-install-configtool"><title>Installation via the eCos
+Configuration Tool</title>
+<para>
+<orderedlist>
+<listitem><para>Open up the eCos Configuration Tool.</para></listitem>
+<listitem><para>Open up the <emphasis>Administration</emphasis> dialog,
+from the <emphasis>Tools</emphasis> menu.</para></listitem>
+<listitem><para>Press the <emphasis>Add</emphasis> button.</para></listitem>
+<listitem><para>A file browser windows opens. Navigate to the YAFFS EPK file.</para></listitem>
+<listitem><para>The License screen shows. You must accept the license
+in order to install the package. Press Yes if you do.</para></listitem>
+</orderedlist>
+</para>
+</sect2>
+
+<sect2 id="yaffs-install-commandline"><title>Installing from the
+command-line</title>
+<para> Advanced users may alternatively use the
+<filename>ecosadmin.tcl</filename> tool from the command line. You
+will be prompted to accept the license at the appropriate time during
+the procedure.
+</para>
+
+<programlisting>
+tclsh $ECOS_REPOSITORY/ecosadmin.tcl add yaffs-v1_2_3.epk
+</programlisting>
+</sect2>
+</sect1>
+
+<sect1 id="yaffs-config-build"><title>Configuration and Building</title>
+<para>
+After installing the EPK, YAFFS is added to your eCos repository
+and is configured and built in the normal way.
+</para>
+
+<sect2 id="yaffs-pkg-deps"><title>Package dependencies</title>
+<para>
+To link YAFFS into your application,
+add <filename>CYGPKG_FS_YAFFS</filename> to your eCos
+configuration in the normal way, either using the eCos Configuration Tool
+(<emphasis>Packages</emphasis> dialog on the <emphasis>Build</emphasis>
+menu), or the <filename>ecosconfig</filename> command-line tool.</para>
+
+<para>
+You will also need to add <filename>CYGPKG_IO_NAND</filename> and 
+<filename>CYGPKG_IO_FILEIO</filename> to your configuration if they
+are not already present.
+Your platform HAL should supply packages for all NAND device(s) present.
+</para>
+
+<para>
+If you started with a smaller template than <emphasis>default</emphasis>,
+you may also need to add some of the following:</para>
+<itemizedlist>
+<listitem><para><filename>CYGPKG_LIBC_STDLIB</filename></para></listitem>
+<listitem><para><filename>CYGPKG_LIBC_STRING</filename> </para></listitem>
+<listitem><para><filename>CYGPKG_MEMALLOC</filename> or something else
+which provides <filename>CYGINT_ISO_MALLOC</filename></para></listitem>
+<listitem><para><filename>CYGPKG_LIBC_I18N</filename> or something else
+which provides <filename>CYGINT_ISO_CTYPE</filename></para></listitem>
+</itemizedlist>
+</sect2>
+
+<sect2 id="yaffs-pkg-options"><title>Configuration options</title>
+<para>
+YAFFS provides a number of package options, including tuning parameters.
+</para>
+
+<variablelist>
+<varlistentry><term><constant>CYGSEM_FS_YAFFS_CACHE_SHORT_NAMES</constant></term><listitem><para>If
+set, caches files' short names in RAM. This consumes more RAM but
+improves performance.</para></listitem></varlistentry>
+<varlistentry><term><constant>CYGPKG_FS_YAFFS_RET_DIRENT_DTYPE</constant></term><listitem><para>Controls
+whether YAFFS supports setting the <structfield>d_type</structfield>
+field in a <structname>struct dirent</structname>.  If you don't need
+this, leave it switched off to save a little code size.</para></listitem></varlistentry>
+<varlistentry><term><constant>CYGNUM_FS_YAFFS_RESERVED_BLOCKS</constant></term><listitem><para>
+The number of blocks to keep in reserve to allow for garbage collection
+and block failures. The recommended value is 5, but it can be tuned to suit your application:
+higher numbers can reduce the delay caused by garbage collection, at the cost of removing
+available space for storing files.
+<emphasis>This setting is a global default and may be
+changed by a mount-time option.</emphasis></para></listitem></varlistentry>
+<varlistentry><term><constant>CYGNUM_FS_YAFFS_SHORTOP_CACHES</constant></term><listitem><para>
+The number of page cache entries to use. Values of 10 to 20 are
+recommended as a good compromise; increasing the number consumes more RAM but may
+improve performance.
+Set to 0 to disable these caches altogether. 
+<emphasis>This setting is a global default and may be
+changed by a mount-time option.</emphasis></para></listitem></varlistentry>
+<varlistentry><term><constant>CYGNUM_FS_YAFFS_TEMP_BUFFERS</constant></term>
+<listitem><para>
+YAFFS requires temporary buffers in many places throughout the code.
+To avoid the overhead of a dynamic malloc every time, a number of
+buffers are preallocated at mount time. This setting controls how many;
+should it not prove enough, YAFFS will call maloc on demand as required.
+The default setting is 6; most users will not need to change it.
+</para></listitem></varlistentry>
+<varlistentry><term><constant>CYGNUM_FS_YAFFS_TRACEMASK</constant></term><listitem><para>This
+is a 32-bit bitfield which controls diagnostic output. The bit definitions
+are found in <filename>yportenv.h</filename>; changing this setting tends to only be useful
+if you wish to debug YAFFS itself.</para></listitem></varlistentry>
+<varlistentry><term><constant>CYGPKG_FS_YAFFS_CFLAGS_ADD</constant></term>
+<term><constant>CYGPKG_FS_YAFFS_CFLAGS_REMOVE</constant></term><listitem><para>
+These settings allow specific build options to be added to or removed from the CFLAGS
+list when building YAFFS.</para></listitem></varlistentry>
+<varlistentry><term><constant>CYGSEM_FS_YAFFS_SMALLPAGE_MODE</constant></term>
+<listitem><para>This option only affects behaviour on so-called "small page" NAND devices
+(those whose pages are 512 bytes long).
+Such devices do not have enough space in their Out Of Band area to
+store a full set of YAFFS metadata tags. There are two ways to work
+around this: <itemizedlist><listitem><para><constant>YAFFS2</constant> mode -
+the default - uses regular tags, but at
+a price: it steals 16 bytes from the available space per page to store
+them. <emphasis>This reduces the apparent available
+size of your filesystem by 1/32!</emphasis></para></listitem>
+<listitem><para><constant>YAFFS1</constant> mode places a smaller tagset
+in the OOB area, but with a different side-effect: whenever a page is
+deleted, one byte of the tags area has to be rewritten.  Some devices
+forbid rewrite-without-erase in this way, so it may not be safe for you
+to use this option.  <emphasis>You must refer to the spec sheet for the chip on
+your board before selecting this option!</emphasis></para></listitem></itemizedlist>
+</para></listitem></varlistentry>
+<varlistentry><term><constant>CYGSEM_FS_YAFFS_OMIT_YAFFS2_CODE</constant></term><listitem><para>
+This causes all YAFFS2 code to be omitted from the build. This option only makes sense when
+all the devices on which YAFFS is to be used are small-page and operating in YAFFS1 mode.
+<note><para>There is no corresponding option to omit YAFFS1 code, because that code is only
+compiled when <constant>CYGSEM_FS_YAFFS_SMALLPAGE_MODE</constant> is set to YAFFS1.  </para></note>
+</para></listitem></varlistentry>
+</variablelist>
+</sect2>
+</sect1>
+
+<sect1 id="yaffs-using"><title>Using YAFFS</title>
+<para>
+YAFFS appears in the eCos filesystem table.
+This means that you can mount a filesystem in the standard Unix-like way,
+then interact with it with calls to open, read, etc.
+</para>
+
+<sect2 id="yaffs-mounting"><title>Mounting a filesystem</title>
+
+<para>
+Before you can use a filesystem, it must be <emphasis>mounted</emphasis>.
+</para>
+
+<para>
+A NAND device is logically organised as one or more
+<emphasis>partitions</emphasis>, which are
+usually set up by the relevant platform HAL.
+You need to tell the mount command
+which device and partition you wish to access. In the following example,
+we are mounting partition 0 of the <emphasis>onboard</emphasis> NAND device.
+</para>
+<!-- FIXME: Update if partition naming is changed. -->
+
+<programlisting>
+rv = mount("onboard/0", "/nand", "yaffs");
+</programlisting>
+
+<note><para>The <emphasis>device</emphasis> argument to the
+<function>mount</function> call is a NAND-specific device name, not
+an entry in /dev.
+Refer to the documentation for your platform HAL for details of how
+the NAND device(s) are named, and to the NAND library documentation
+for details of how partitions are addressed.
+</para></note>
+
+<para>
+You can, if you wish, make the filesystem mounting automatic at
+static constructor time with the MTAB_ENTRY macro. (Your platform
+HAL may already do this; check it carefully.)
+</para>
+
+<programlisting>
+MTAB_ENTRY(my_nand, "/nand", "yaffs", "onboard/0", "", 0);
+</programlisting>
+
+<note><para>This example is for eCosPro. In eCos, the MTAB_ENTRY macro
+takes only four arguments.</para></note>
+
+<sect3 id="yaffs-mount-options"><title>Mount-time options</title>
+<para>
+eCosPro allows various options to be passed to a filesystem at mount time,
+by combining them with the filesystem argument in a particular format.
+YAFFS understands the following options:
+</para>
+
+<itemizedlist>
+<listitem><para><constant>reserved</constant>=&lt;int&gt; The number of
+physical NAND blocks to reserve for garbage collection and block failures
+(minimum 2).  The default is set in CDL as
+<constant>CYGNUM_FS_YAFFS_RESERVED_BLOCKS</constant>.</para></listitem>
+<listitem><para><constant>caches</constant>=&lt;int&gt; The number of
+page cache entries to use.
+Values of 10 to 20 are recommended.
+The default is set in CDL as 
+<constant>CYGNUM_FS_YAFFS_SHORTOP_CACHES</constant>.</para></listitem>
+<listitem><para><constant>skip-checkpoint-read</constant> Instructs YAFFS
+to not attempt to reload the filesystem from a checkpoint, if one exists.
+In other words, this option forces a full filesystem scan whether or not
+one is necessary.</para></listitem>
+</itemizedlist>
+</sect3>
+</sect2>
+
+<sect2 id="yaffs-sync"><title>Data flushing</title>
+<para>
+YAFFS operates a cacheing layer in order to save undue wear on the
+NAND chip if many small writes are performed. Because of this, 
+if you wish to ensure that any data written to a still-open file has
+been fully flushed, you must make a synchronisation request. This is
+done with the <function>fsync</function> function, which takes as its
+argument the file descriptor of the file you wish to synchronise.</para>
+</sect2>
+
+<sect2 id="yaffs-checkpointing"><title>Checkpointing</title>
+<para>
+When mounting a filesystem, YAFFS has to scan the NAND chip to recreate
+its internal state. This can be a slow process, but is made much
+faster if there is a valid <emphasis>checkpoint</emphasis>.
+</para>
+
+<para>
+A checkpoint is written out automatically when you unmount the filesystem.
+At any other time, you can manually force a checkpoint to be written
+with one of the following functions:
+</para>
+
+<itemizedlist>
+<listitem><para><function>cyg_fs_fssync(mountpoint)</function> 
+synchronises a filesystem (automatically called on umount)</para></listitem>
+<listitem><para><function>sync</function> synchronises all mounted
+filesystems.</para></listitem>
+</itemizedlist>
+
+<note><para>
+A checkpoint becomes invalid as soon as there have been any other writes
+to the filesystem. Finding a good place to sync is necessarily dependent
+on your application logic.</para>
+</note>
+</sect2>
+
+<sect2 id="yaffs-limitations"><title>Limitations</title>
+<para>
+Although YAFFS is a Unix-compatible filesystem, the eCos port does not
+provide support for the full range of Unix attributes.
+</para>
+<itemizedlist>
+<listitem><para> eCos does not check file or directory permissions;
+everything it creates is given fixed user and group IDs of zero and
+standard permissions (files rw-r--r--, directories rwxr-xr-x).</para></listitem>
+<listitem><para> It is not currently possible to change file ownership
+or permissions.</para></listitem>
+<listitem><para> It is not currently possible to create symbolic links,
+FIFOs (named pipes), sockets or device nodes.</para></listitem>
+<listitem><para> Hard links to files work in the expected way. Hard
+links to directories are forbidden.</para></listitem>
+<listitem><para> It is not possible to unlink the '.', '..' or
+'lost+found' special directories.</para></listitem>
+</itemizedlist>
+
+<note><para>
+If you will be sharing a YAFFS filesystem between eCos and some other
+operating system, you are advised to carefully check the other system's
+definitions of mode (permission) bits and whether any translation may be
+required.</para>
+</note>
+</sect2>
+</sect1>
+
+<sect1 id="yaffs-mem-reqs"><title>Memory requirements</title>
+<para>
+The amount of RAM required by YAFFS to hold its in-memory data structures
+grows with the number of objects (files and directories) in your
+filesystem.
+You are recommended to test your application thoroughly to ensure
+that sufficient memory exists for YAFFS to operate with the
+most complicated filesystem it is likely to encounter.</para>
+
+<para>
+If you wish to estimate your RAM usage, the YAFFS author provides the
+following calculation:</para>
+
+<itemizedlist>
+<listitem><para> The partition itself requires a yaffs_DeviceStruct of 3608
+bytes.</para></listitem>
+<listitem><para> If CYGNUM_FS_YAFFS_SHORTOP_CACHES is enabled, each
+is the size of a NAND page plus 28 bytes.</para></listitem>
+<listitem><para> Every object (file, directory or hardlink) in the
+filesystem takes a yaffs_Object struct, which is 124 bytes.</para></listitem>
+<listitem><para> Every page of every file requires a Tnode entry, but
+they are always allocated in groups of 16 at a time.</para>
+  <itemizedlist>
+    <listitem><para>The size of a single Tnode entry is the
+    number of <emphasis>bits</emphasis> required to number all the
+    pages in the NAND partition YAFFS is using, numbering from
+    <emphasis>one</emphasis>; this is rounded up to a multiple of 2,
+    and has an absolute minimum of sixteen bits.</para></listitem>
+    <listitem><para>For example: on a partition with 65536 pages,
+    seventeen bits are required for the numbering, which round up to
+    18. Therefore each file takes 288 bits (36 bytes) per group of Tnodes,
+    and one group of Tnodes will cover up to sixteen pages of data.</para></listitem>
+  </itemizedlist>
+  </listitem>
+</itemizedlist>
+
+<note><para><emphasis>Actual memory consumption will be slightly
+higher than suggested by the above.</emphasis> This arises from the
+tree structure holding the Tnodes, overheads from the heap itself,
+and so on.</para></note>
+
+<para>
+YAFFS calls the standard <function>malloc</function> function to allocate
+memory and <function>free</function> to release it.  Normally, the eCos
+heap occupies all spare RAM not needed for the program, its static
+data or the stacks. Therefore, most applications will not need to do
+anything special beyond ensuring there is enough spare RAM available on
+the platform.</para>
+
+<tip><para>
+If you wish to experiment with restricted-size heaps to determine
+much memory your application actually uses under YAFFS,
+you may find the option
+<constant>CYGSEM_MEMALLOC_INVOKE_OUT_OF_MEMORY</constant> of use.
+</para></tip>
+
+<sect2 id="yaffs-mem-reqs-example"><title>Worked example</title>
+<para>
+Consider a YAFFS filesystem hosted by a NAND partition with 65536 pages,
+each of size 2k, using the default setting of ten short-op caches.
+On this filesystem we shall store 10000 files each of
+size 10240 bytes, hence each requires a single group of Tnodes.
+</para>
+
+<table frame=all pgwide=0><title>YAFFS RAM use worked example</title>
+<tgroup cols=2>
+<colspec colname=c1>
+<colspec colname=c2>
+<thead><row>
+<entry>Consumer</entry>
+<entry>RAM used (bytes)</entry>
+</row></thead>
+<tfoot><row>
+<entry>Total</entry>
+<entry align=right> 1,624,368 </entry>
+</row></tfoot>
+<tbody>
+<row>
+<entry> yaffs_DeviceStruct </entry>
+<entry align=right> 3,608 </entry>
+</row>
+<row>
+<entry> Short-op caches @ 10 x (2048+28)</entry>
+<entry align=right> 20,760 </entry>
+</row>
+<row>
+<entry> yaffs_Objects @ 10,000 x 124 </entry>
+<entry align=right> 1,240,000 </entry>
+</row>
+<row>
+<entry> Tnode groups @ 10,000 x 36 <emphasis>(see above)</emphasis></entry>
+<entry align=right> 360,000 </entry>
+</row>
+</tbody>
+</tgroup>
+</table>
+
+<para>
+This example is a close match to the actual consumption measured by 
+eCosCentric during testing. (The measured consumption as reported 
+by <function>mallinfo</function> was 1,681,112 bytes, which includes
+the heap's own overheads.)
+</para>
+</sect2>
+</sect1>
+
+<sect1 id="yaffs-testing"><title>Testing</title>
+<para>
+YAFFS is supplied with a number of test programs, some of which are have been
+adapted from tests for other filesystems in eCos.
+</para>
+
+<glosslist>
+<glossentry><glossterm>fops</glossterm><glossdef><para>
+This was the first basic test created for the port of the filesystem.
+It is believed to exercise all of the code paths (filesystem operations,
+file operations and directory operations) within the eCos-YAFFS
+adaptation layer.  </para> <para>
+This test was originally intended to run on a synthetic NAND filesystem.
+On real NAND chips, it deliberately omits the more stressful routines to
+avoid undue wear on the hardware.
+</para></glossdef></glossentry>
+<glossentry><glossterm>yaffs1</glossterm><glossdef><para>
+A number of filesystem edge-case semantic tests, including 
+file and directory creation and deletion, 
+invalid open and rename operations, and
+removing nonexistent files and directories.
+</para></glossdef></glossentry>
+<glossentry><glossterm>yaffs2</glossterm><glossdef><para>
+Concurrent multi-threaded filesystem access and consistency checks.
+</para></glossdef></glossentry>
+<glossentry><glossterm>yaffs4</glossterm><glossdef><para>
+Semantic and edge-case testing - like yaffs1 - but with long file names.
+</para></glossdef></glossentry>
+<glossentry><glossterm>yaffs5</glossterm><glossdef><para>
+Tests that file reading and writing works over reasonably large files
+(up to 1Mbyte) with different I/O chunk sizes. Some operation timings
+are collected and reported, as is the data rate on large files.
+</para></glossdef></glossentry>
+<glossentry><glossterm>yaffs6</glossterm><glossdef><para>
+Semantic and edge-case testing - like yaffs1 - but with Cyrillic filenames
+in order to test UTF-8 correctness.
+</para></glossdef></glossentry>
+<glossentry><glossterm>mounttime</glossterm><glossdef><para>
+A simple benchmark which repeatedly mounts and unmounts the filesystem
+and measures how long this takes.
+You can optionally use the <filename>mkfiles</filename> routine - also
+present in the tests directory - to create many short files so you can 
+test performance on a loaded filesystem.
+</para></glossdef></glossentry>
+<glossentry><glossterm>hammer</glossterm><glossdef><para>
+A stress test designed to shake out corner cases.
+Repeatedly creates many files of varying sizes from multiple threads
+until the filesystem fills up, then verifies their contents and removes
+them. From time to time, all threads pause and the filesystem is
+unmounted and remounted. </para><para>This test is particularly useful when 
+combined with the bad block injection functionality provided by
+the synthetic NAND device. It has been used in this way by eCosCentric to 
+thoroughly test this package's stability under error conditions.
+<note><para>This test runs forever, until interrupted.</para></note>
+</para></glossdef></glossentry>
+</glosslist>
+</sect1>
+</chapter>
+
+<chapter id="yaffs-redboot"><title>Using YAFFS with RedBoot</title>
+<para>
+It is possible to link YAFFS into RedBoot and use it to boot an
+executable image stored on a NAND array. 
+</para>
+
+<para>
+This is done by configuring and building RedBoot largely in the normal way.
+You will need to add <filename>CYGPKG_FS_YAFFS</filename> and
+<filename>CYGPKG_IO_FILEIO</filename> to your configuration, plus their
+attendant dependencies.
+</para>
+
+<para>
+The presence of CYGPKG_IO_FILEIO activates the <filename>fs</filename> series
+of RedBoot commands. The following (edited) transcript illustrates how
+they might
+be used in concert with other RedBoot commands to store an ELF image on
+a NAND partition, load it back and execute:
+</para>
+
+<programlisting>
+RedBoot> fs mount -d onboard/0 -t yaffs /nand
+yaffs: restored from checkpoint
+RedBoot> load -r -h my.tftp.ip.address -b %{freememlo} my.image
+Using default protocol (TFTP)
+Raw file loaded 0xa013f000-0xa01554b3, assumed entry at 0xa013f000
+RedBoot> fs write /nand/myimg.elf
+RedBoot> fs list /nand                                                          
+   1 drwxr-xr-x  0 size      0 .
+   1 drwxr-xr-x  0 size      0 ..
+ 262 -rw-r--r--  0 size  91316 myimg.elf
+   2 drwxr-xr-x  0 size      0 lost+found
+RedBoot> load -m file /nand/myimg.elf
+RedBoot> go
+Hello, NAND world!
+</programlisting>
+
+<note><para>When you command RedBoot to execute an image, it 
+first synchronises all mounted filesystems. Therefore,
+provided these filesystems support the synchronisation operation
+(which YAFFS does), it is not always necessary to unmount them before
+invoking an image.
+</para>
+</note>
+
+<sect1 id="yaffs-rb-mem"><title>Memory considerations under RedBoot</title>
+<para>
+RedBoot traditionally has very limited requirements for memory management;
+the main need is for there to be free space in RAM at the correct
+(physical) address to load an image before jumping to it.
+</para>
+
+<para>
+Introducing YAFFS brings with it not just the need to have dynamically
+allocatable RAM (<filename>CYGPKG_MEMALLOC</filename>), but enough
+to replay the filesystem journal. This must be balanced against the need
+for RAM to load images into.
+</para>
+
+<para>
+When the <filename>CYGPKG_MEMALLOC</filename> package is present in
+RedBoot, by default a small (64k) heap is set up so that the maximum RAM
+possible is available for loading images. This is not enough to 
+support YAFFS in any circumstances, so the following definition has
+been included in the <filename>yaffs.cdl</filename> file:
+</para>
+
+<programlisting>
+requires        { CYGPKG_REDBOOT implies (CYGMEM_REDBOOT_WORKSPACE_HEAP_SIZE >= 0x00014000) }
+</programlisting>
+
+<caution><para>
+This declaration only provideds the bare minimum heap required to mount a 
+trivial YAFFS filesystem. More will be required for all but the simplest
+of cases and it is recommended that you test for typical use in your
+environment. Refer also to <xref linkend="yaffs-mem-reqs">.
+</para></caution>
+
+<para>
+It is recommended that, should you wish to make a filesystem usable by
+RedBoot, your platform HAL should make a similar
+declaration in its CDL to establish an appropriate heap size.
+
+For example, the platform HAL for the EA LPC2468 OEM board - which has
+a 128MB NAND chip on-board - contains the following declaration:
+</para>
+
+<programlisting>
+requires        { (CYGPKG_REDBOOT && CYGPKG_FS_YAFFS) implies (CYGMEM_REDBOOT_WORKSPACE_HEAP_SIZE >= 0x20000) }
+</programlisting>
+
+<tip><para>
+If you wish to experiment with restricted heaps to determine
+much memory your application actually uses under YAFFS,
+you may find the option
+<constant>CYGSEM_MEMALLOC_INVOKE_OUT_OF_MEMORY</constant> of use.
+</para></tip>
+</sect1>
+</chapter>
+</part>
+
+<!-- ### Uncomment to make a standalone book:
+</book>
+     /### -->

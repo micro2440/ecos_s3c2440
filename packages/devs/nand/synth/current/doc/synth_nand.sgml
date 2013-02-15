@@ -1,0 +1,679 @@
+<!-- DOCTYPE refentry  PUBLIC "-//OASIS//DTD DocBook V3.1//EN" -->
+
+<!-- =============================================================== -->
+<!--                                                                 -->
+<!--     synth_nand.sgml                                             -->
+<!--                                                                 -->
+<!--     Synthetic target nand flash device                          -->
+<!--                                                                 -->
+<!-- =============================================================== -->
+<!-- ####ECOSDOCCOPYRIGHTBEGIN####                                   -->
+<!-- =============================================================== -->
+<!-- Copyright (C) 2009 Free Software Foundation, Inc.               -->
+<!-- This material may be distributed only subject to the terms      -->
+<!-- and conditions set forth in the Open Publication License, v1.0  -->
+<!-- or later (the latest version is presently available at          -->
+<!-- http://www.opencontent.org/openpub/)                            -->
+<!-- Distribution of the work or derivative of the work in any       -->
+<!-- standard (paper) book form is prohibited unless prior           -->
+<!-- permission obtained from the copyright holder                   -->
+<!-- =============================================================== -->
+<!-- ####ECOSDOCCOPYRIGHTEND####                                     -->
+<!-- =============================================================== -->
+<!-- #####DESCRIPTIONBEGIN####                                       -->
+<!--                                                                 -->
+<!-- Author(s):   bartv                                              -->
+<!-- Contact(s):  bartv                                              -->
+<!-- Date:        2009/07/09                                         -->
+<!-- Version:     0.01                                               -->
+<!--                                                                 -->
+<!-- ####DESCRIPTIONEND####                                          -->
+<!-- =============================================================== -->
+
+<part id="devs-nand-synth-ref">
+  <title>Synthetic Target NAND Flash Device</title>
+
+<refentry id="devs-nand-synth">
+  <refmeta>
+    <refentrytitle>Synthetic Target NAND Flash Device</refentrytitle>
+  </refmeta>
+  <refnamediv>
+    <refname>Synthetic Target NAND Flash Device</refname>
+    <refpurpose>Emulate NAND flash hardware in the synthetic target</refpurpose> 
+  </refnamediv>
+
+  <refsect1 id="devs-nand-synth-overview"><title>Overview</title>
+    <para>
+The device driver <varname>CYGPKG_DEVS_NAND_SYNTH</varname> emulates
+NAND flash hardware inside the eCos synthetic target. In addition it
+provides a number of debug facilities which cannot readily be
+implemented on real embedded hardware, including:
+    </para>
+    <orderedlist>
+      <listitem><para>
+The emulated NAND contents are held on a file in the Linux host. This
+makes it easy to archive and restore NAND images, allowing test runs
+to be repeated with the exact same state each time.
+      </para></listitem>
+      <listitem><para>
+The device driver can log details of all NAND I/O to a separate
+logfile in the Linux host. This makes it easier to work out exactly
+what is happening in the application, and more importantly it can help
+with figuring out what went wrong when. For extended runs it is
+possible to limit the disk space used for logging. It is also possible
+to generate checkpoints, where the current NAND image is saved to a
+separate file.
+      </para></listitem>
+      <listitem><para>
+It is possible to inject bad blocks at run-time, to check how the
+application would cope on real hardware if and when a NAND erase block
+developed a fault. These can be made to affect random blocks or
+specific blocks, for example ones holding filesystem metadata.
+      </para></listitem>
+    </orderedlist>
+    <para>
+Some of the functionality is always available and uses compile-time
+configuration via CDL. This allows applications to be run stand-alone.
+The more advanced functionality such as logging and bad block
+injection is only available when running in conjunction with the
+synthetic target I/O auxiliary, when
+<parameter>--io</parameter> is used on the command line. The settings
+for logging and bad block injection usually come from the
+<filename>default.tdf</filename> target definition file. These can be
+changed on a per-run basis by adding
+<parameter>--nanddebug</parameter> to the command line, which will
+cause a suitable dialog box to pop up during NAND driver
+initialization.
+    </para>
+  </refsect1>
+
+  <refsect1 id="devs-nand-synth-config"><title>Compile-time Configuration</title>
+    <para>
+This package <varname>CYGPKG_DEVS_NAND_SYNTH</varname> will
+automatically be loaded when creating a new eCos configuration for the
+Linux synthetic target. However the package will be inactive until
+the generic NAND support is added to the configuration.
+    </para>    
+    <para>
+The synthetic target NAND driver has been designed to be functional
+both when running stand-alone and when used with the I/O auxiliary.
+Hence some of the basic parameters of the emulated NAND device must be
+specified at compile-time, and this is handled via CDL configuration
+options.
+    </para>
+    <para>
+<varname>CYGDAT_NAND_SYNTH_FILENAME</varname> specifies the host-side
+file that will be used to hold the NAND data. The default is
+<filename>synth_nand.dat</filename> in the current directory. If the
+file does not exist then the driver will create it during
+initialization. All data in a newly-created image file will be set to
+0xFF, corresponding to an erased device. Hence deleting the current
+image file makes it possible to start a test run with a blank NAND
+device.
+   </para>
+   <para>
+A NAND device consists of some number of erase blocks: erase
+operations affect all data in an erase block. Erase blocks are made up
+of some number of pages, and write operations typically affect a page
+at a time. Each page consists of a main data block plus some spare
+bytes, also known as out of band or OOB data. There are four CDL
+configuration options controlling the size and layout of the emulated
+flash device: <varname>CYGNUM_NAND_SYNTH_BLOCK_COUNT</varname>,
+<varname>CYGNUM_NAND_SYNTH_PAGES_PER_BLOCK</varname>, <varname>CYGNUM_NAND_SYNTH_PAGESIZE</varname>,
+and <varname>CYGNUM_NAND_SYNTH_SPARE_PER_PAGE</varname>. The default
+settings are 1024 erase blocks, 32 pages per block, 2K of data per
+page, and 64 bytes of OOB data per page. This gives an emulated device
+size of 64MB plus 2M OOB.
+   </para>
+   <para>
+The size and layout parameters are encoded in each NAND image file. If
+these configuration options are changed then existing image files will
+be incompatible and the device driver will report a fatal error at
+run-time. This avoids compatibility problems with higher-level code:
+if a file system has formatted the NAND device for a 2K page size then
+it is likely to get very confused if the page size suddenly changes to
+512 bytes.
+   </para>
+   <para>
+The NAND device can be partitioned manually by enabling the component
+<varname>CYGSEM_DEVS_NAND_SYNTH_PARTITION_MANUAL_CONFIG</varname> and
+manipulating the options below this. The default is for a single
+partition occupying the entire NAND device.
+   </para>
+   <para>
+Option <varname>CYGSEM_NAND_SYNTH_RANDOMLY_LOSE</varname> activates
+code in the driver which triggers frequent bit errors during read
+operations. These should be handled by error correcting codes within
+the generic NAND layer so should be transparent to higher-level code.
+The option exists mainly as an easy way of testing the automatic error
+correction support.
+   </para>
+  </refsect1>
+
+  <refsect1 id="devs-nand-synth-customization"><title>Run-time Customization</title>
+    <para>
+Logging and bad block injection are controlled by run-time
+customization via the synthetic target I/O auxiliary, not by
+compile-time CDL options. This allows the same test executable to be
+run with and without logging or with different sequences of injected
+bad blocks. If the executable is run without the I/O auxiliary,
+without the <parameter>--io</parameter> command line option,
+then both logging and bad block injection will be disabled.
+    </para>
+    <para>
+The main way of customizing both logging and bad block injection is
+via the target definition file,
+usually <filename>default.tdf</filename>. The driver comes with a
+file <filename>nand.tdf</filename> holding the various options and
+explanatory text. This file should be incorporated
+into <filename>default.tdf</filename> and edited as appropriate.
+Note that all NAND-related settings should be inside
+a <literal>synth_device nand</literal> section.
+    </para>
+
+  <refsect2 id="devs-nand-synth-customization-logging"><title>Logging</title>
+    <para>
+The target definition file settings related to logging are as follows:
+    </para>
+    <programlisting width=72>
+    logfile            "/tmp/synthnand.log"
+    log                read write erase error
+    max_logfile_size   16M
+    number_of_logfiles 4
+    generate_checkpoint_images
+    </programlisting>
+    <para>
+The <varname>logfile</varname> setting controls the location of the
+logfile. The default is to add a suffix <filename>.log</filename> to
+the <varname>CYGDAT_NAND_SYNTH_FILENAME</varname> setting, thus
+creating logfiles in the same directory as the NAND image file.
+    </para>
+    <para>
+The <varname>log</varname> setting specifies which events should be
+logged. It is followed by a list of some or all of the following:
+<literal>read</literal>, <literal>READ</literal>, <literal>write</literal>, <literal>WRITE</literal>,
+<literal>erase</literal>,
+and <literal>error</literal>. <literal>read</literal> logs all calls
+to the driver's page read function, but not the data actually read.
+<literal>READ</literal> is like <literal>read</literal> but logs the
+actual data as well as the event. Similarly <literal>write</literal>
+and <literal>WRITE</literal> log calls to the driver's page write
+function, without or with the data being
+written. <literal>erase</literal> logs calls to the driver's block
+erase function. <literal>error</literal> logs any bad block injection
+events.
+    </para>
+    <para>
+Logging can quickly generate very large files, especially
+when <literal>READ</literal> or <literal>WRITE</literal> debugging is
+enabled. This can have unfortunate side effects, for example an
+overnight stress test can fail because the logfile has filled all
+available disk space. To avoid this it is possible to limit the size
+of each logfile using the <varname>max_logfile_size</varname> setting.
+This is simply a number followed by a unit K, M or G.
+    </para>
+    <para>
+When <varname>max_logfile_size</varname> is exceeded the NAND driver
+takes appropriate action. The default behaviour is just to delete the
+current logfile and create a new one, with the same name as before.
+This can be unfortunate if some particularly interesting event
+happened just before the maximum logfile size was exceeded because all
+logging information related to that event will have been lost. To
+avoid this it is possible to have multiple logfiles, limited by the
+<varname>number_of_logfiles</varname> setting. Assume a logfile name
+of <filename>/tmp/synthnand.log</filename>, a maximum logfile size of
+16M and four logfiles. After the first 16MB of logging data has been
+written to <filename>/tmp/synthnand.log</filename> that file will be
+renamed to <filename>/tmp/synthnand.log.0</filename> and a new current
+logfile <filename>/tmp/synthnand.log</filename> will be created.
+After another 16MB the current logfile will be renamed to
+<filename>/tmp/synthnand.log.1</filename>, and so on. After 64MB
+the maximum allowed number of logfiles has been created, so
+<filename>/tmp/synthnand.log.0</filename> will be deleted and then
+<filename>/tmp/synthnand.log</filename> will be renamed to
+<filename>/tmp/synthnand.log.3</filename>. Hence the maximum disk
+space used will be between 48MB and 64MB, plus a small amount of
+overflow for each logfile. All logfiles are
+in <link linkend="devs-nand-synth-file-formats">plain
+text</link>, one event per line, and a single event will not be spread
+over multiple logfiles.
+    </para>
+    <para>
+In addition to the logfiles the NAND driver will generate image
+checkpoint files if <varname>generate_checkpoint_images</varname> is
+enabled. At the start of the test run the driver will copy the current
+NAND image to a new
+file <filename>/tmp/synthnand.log.checkpoint</filename>, using the
+same base filename as for logfiles. If support for multiple logfiles
+is enabled then the current checkpoint file will be renamed in the
+same way and at the same time as the current logfile, and a new
+checkpoint file will be created using the current image data. Hence
+for any logfile it is possible to examine both the starting image and
+the final image (which may be the current one).
+    </para>
+    </refsect2>
+
+    <refsect2 id="devs-nand-synth-customization-inject"><title>Bad Block Injection</title>
+      <para>
+There are two settings related to bad block
+injection: <varname>factory_bad</varname>
+and <varname>inject</varname>. The former is straightforward:
+      </para>
+      <programlisting width=72>
+    factory_bad 17 42 256 1019	
+      </programlisting>
+      <para>
+This setting is used only when the NAND image file does not yet exist
+and the driver has to create a new one. The specified erase blocks are
+marked as factory-bad and hence unusable. The setting consists simply
+of one or more numbers, each in the range 0
+to <varname>CYGNUM_NAND_SYNTH_BLOCK_COUNT-1</varname>. A maximum of 32
+blocks can be marked factory bad.
+      </para>
+      <para>
+Bad block injection is rather more complicated, in an attempt to make
+it sufficiently flexible for a variety of uses. The target definition
+file can contain one or more <varname>inject</varname> settings. There
+is a limit of eight erase definitions and eight write definitions,
+giving a maximum of sixteen bad block injection definitions. However
+some of these can use <literal>repeat</literal>, so the number of bad blocks injected
+during a test run is limited only by the size of the emulated device.
+Example settings are:
+      </para>
+      <programlisting width=72>
+    inject erase current after rand% 1024 erases
+    inject write current after rand% 100000 calls repeat
+    inject erase block 1 after 3 block_erases
+    inject write page 9860 after 1000 writes
+      </programlisting>
+      <para>
+The <literal>inject</literal> keyword should be followed by
+either <literal>erase</literal> or <literal>write</literal>.
+If <literal>erase</literal> then the bad block injection happens
+during a call to the driver's erase function, otherwise it happens
+during a call to write. This is followed by a block or page
+definition, the keyword <literal>after</literal>, an event counter,
+and a couple of optional flags.
+      </para>
+      <para>
+The simplest block or page definition is the
+keyword <literal>current</literal>. This simply means that whichever
+block is being erased, or whichever block contains the page being
+written, will be marked bad. Typically this will be used for injecting
+random faults. If a given block is the subject of an above-average
+number of erase or write operations then it is more likely to be the
+current block in one of these definitions, so heavily-used blocks are
+more likely to fail.
+      </para>
+      <para>
+The alternative to <literal>current</literal> is to list a specific
+block for an erase definition, or a specific page for a write
+definition. Blocks go from 0
+to <varname>CYGNUM_NAND_SYNTH_BLOCK_COUNT</varname> - 1. Pages go from
+0 to (<varname>CYGNUM_NAND_SYNTH_BLOCK_COUNT</varname> &ast;
+<varname>CYGNUM_NAND_SYNTH_PAGES_PER_BLOCK</varname>) - 1. This can be
+particularly useful when testing higher-level code that uses certain
+blocks specially, for example for storing filesystem metadata. It can
+also be useful when attempting to repeat a test run using information
+from a logfile.
+      </para>
+      <para>
+The fields immediately following the <literal>after</literal> keyword
+specify when the bad block injection should trigger. They consist of
+the optional keyword <literal>rand%</literal>, a count, and an event
+identifier. If <literal>rand%</literal> is not specified then exactly
+the specified number of events must occur before the bad block
+injection triggers. Otherwise some number between 0 and count-1 events
+must occur. The event identifier can be one
+of <literal>erases</literal>, <literal>writes</literal>, <literal>calls</literal>, <literal>block_erases</literal>,
+or <literal>page_writes</literal>. <literal>erases</literal> means the
+number of calls to the driver's block erase
+function. <literal>writes</literal> means the number of calls to the
+page write function. <literal>calls</literal> means the total number
+of read, write or erase calls. <literal>block_erases</literal> means
+erase calls for a specific block.
+Similarly <literal>page_writes</literal> means write calls for a
+specific page. <literal>block_erases</literal>
+and <literal>page_writes</literal> cannot be used together with
+<literal>current</literal>, only with a specific block or page.
+      </para>
+      <para>
+So, consider the first example again:
+      </para>
+      <programlisting width=72>
+    inject erase current after rand% 1024 erases
+      </programlisting>
+      <para>
+The driver will calculate a random number between 0 and 1023, say 427.
+Once there have been at least 427 erase calls the bad block injection
+will trigger. Since the definition is for erase current, the injection
+can happen immediately. Hence whichever block is specified during
+the 427th erase call will be marked bad and that erase call will fail
+with error code <literal>EIO</literal>.
+      </para>
+      <para>
+Suppose that the definition used <literal>write current</literal>
+instead of <literal>erase current</literal>. The definition will still
+trigger during erase call 427, but it will not take effect
+immediately. Instead whichever page is the subject of the next write
+operation will be marked bad. Alternatively, suppose that the
+definition was for <literal>erase block 42</literal> but call 427 was
+for block 512 instead. If some time after call 427 there was another
+erase call for block 42, that later erase call will fail and cause the block to
+be marked bad.
+      </para>
+      <para>
+Now consider the next definition:	
+      </para>
+      <programlisting width=72>
+    inject write current after rand% 100000 calls repeat
+      </programlisting>
+      <para>
+This event will trigger after between 0 and 99999 calls into the
+driver. These calls can be reads, writes, or erases. If the triggering
+call is a write then the block affected will be the one containing
+the page being written. Otherwise whichever page is the subject of the
+next write operation will be the one affected.
+      </para>
+      <programlisting width=72>
+    inject erase block 1 after 3 block_erases
+      </programlisting>
+      <para>
+This definition will only ever affect block 1. The first two calls to
+erase block 1 will succeed. The third call will fail. Erase calls for
+any other block have no effect on this definition.
+      </para>
+      <programlisting width=72>
+    inject write page 9860 after 1000 writes
+      </programlisting>
+      <para>
+This definition will only ever affect page 9860. The definition will
+trigger after 1000 writes to any page. If the thousandth write happens
+to be for page 9860, it will fail. Otherwise the next write for page
+9860 will fail, whenever that happens. If the definition specified
+event type <literal>page_writes</literal> instead
+of <literal>writes</literal> it would trigger only after 1000 writes
+to page 9860 instead of 1000 writes to any page.
+      </para>
+      <para>
+Trigger definitions can be followed by two optional keywords. The
+first is <literal>repeat</literal> and indicates that the definition
+should trigger multiple times, not just
+once. <literal>repeat</literal> can only be used for block or
+page <literal>current</literal>, not for a specific block or page,
+since any given block can only fail once. The second keyword is
+<literal>disabled</literal>. This can be used to create a bad block
+injection definition which is not active by default but which can be
+enabled in the GUI interface.
+      </para>
+      <para>
+All bad block injection definitions operate in parallel, not
+sequentially. It is possible for multiple definitions to trigger
+during a single call but a given block can only fail once.
+      </para>
+    </refsect2>
+
+    <refsect2 id="devs-nand-synth-customization-dialog"><title>Interactive Dialog</title>
+      <para>
+Although it is possible to change the logging and other settings
+between test runs by editing the target definition file, the package
+also provides a way of changing these during driver initialization
+time. If the command line option <parameter>--nanddebug</parameter> is
+used in addition to <parameter>--io</parameter> then the I/O auxiliary
+will pop up a dialog box allowing the various settings to be edited.
+      </para>
+      <informalfigure PgWide=1>
+        <mediaobject>
+          <imageobject>
+            <imagedata fileref="dialog1.png" Scalefit=1 Align="Center">
+          </imageobject>
+        </mediaobject>
+      </informalfigure>
+      <para>
+The dialog consists of a tabbed notebook with separate tabs for Files,
+Logging, and Errors. The default tab is Files. This shows the NAND
+device settings as configured via CDL options. If a current NAND image
+file exists then it can be deleted with a single click, allowing the
+test run to proceed with a new blank NAND device. The current image
+file can be saved away to an archive,  either using a default name
+based on the current image name or by letting the user select a file.
+It is also possible to restore a previously-saved archive, again using
+the default name if that archive exists, or by selecting an
+alternative file. If any of the relevant files are changed outside
+this dialog then the refresh button forces the dialog to check the
+filesystem again. The various operations will be reported at the
+bottom of the dialog.
+      </para>
+      <para>
+If the Logging tab is selected then the dialog changes to the following:	
+      </para>
+      <informalfigure PgWide=1>
+        <mediaobject>
+          <imageobject>
+            <imagedata fileref="dialog2.png" Scalefit=1 Align="Center">
+          </imageobject>
+        </mediaobject>
+      </informalfigure>
+      <para>
+There are separate checkbuttons for the six types of events that can
+be logged. It is also possible to change the current logfile and to
+edit the other settings related to logfiles.
+      </para>
+      <para>
+The Errors tab is not yet implemented.	
+      </para>
+      <para>
+The dialog can be dismissed using the OK button or by hitting the ESC
+key. At that point the eCos application will resume running with the
+selected settings.
+      </para>
+    </refsect2>
+  </refsect1>
+
+  <refsect1 id="devs-nand-synth-file-formats"><title>File Formats</title>
+    <para>
+A NAND image is a binary file with six sections: a 64-byte header
+block; an array of erase counts; an array of write counts; an array of
+the factory-bad blocks; a bitmap of the good and bad blocks; and the
+actual data. The header consists of the following data structure:
+    </para>
+    <programlisting width=72>
+struct header {
+  cyg_uint32 magic;           // 0xEC05A11F
+  cyg_uint32 page_size;       // CYGNUM_DEVS_NAND_SYNTH_PAGESIZE
+  cyg_uint32 spare_size;      // CYGNUM_DEVS_NAND_SYNTH_SPARE_PER_PAGE
+  cyg_uint32 pages_per_block; // CYGNUM_DEVS_NAND_SYNTH_PAGES_PER_BLOCK
+  cyg_uint32 number_of_blocks;// CYGNUM_DEVS_NAND_SYNTH_BLOCK_COUNT
+  cyg_uint32 tv_sec;
+  cyg_uint32 tv_usec;
+  cyg_uint32 spare[9];
+};
+    </programlisting>
+    <para>
+All integers in the header and in the following three sections are
+stored in bigendian format. The <structfield>magic</structfield> field
+is used to check that a file really holds a NAND image. The next four
+fields specify the emulated device size and layout, as per the
+corresponding CDL options. The <structfield>tv_sec</structfield> and
+<structfield>tv_usec</structfield> fields are filled in with the
+result of a <function>gettimeofday()</function> system call during
+driver initialization. These fields also appear in logfiles, so code
+can check that a logfile and an image file correspond to the same test
+run.
+    </para>
+    <para>
+Following the header is an array of BLOCK_COUNT integers holding the
+number of erase calls for each block. Next is an array of (BLOCK_COUNT
+&ast; PAGES_PER_BLOCK) integers holding the number of write calls for
+each page. These arrays can be used to check that higher-level code is
+performing wear levelling.
+    </para>
+    <para>
+The array of factory-bad blocks consists of 32 integers holding the
+settings of the target definition's file
+<varname>factory_bad</varname> setting at the time that the image file
+was created.
+    </para>
+    <para>
+The bitmap following the factory-bad block array holds the current
+state of each erase block. Bit 0 of byte 0 corresponds to erase block
+0, bit 0 of byte 1 corresponds to erase block 8, and so on. If a bit
+is set then the erase block is ok. If a bit is clear then the erase
+block is bad, either factory-bad or because it has failed subsequently
+due to a bad block injection.
+    </para>
+    <para>
+The bad block bitmap is followed by the actual data. This consists of
+all erase blocks concatenated without padding, starting with erase
+block 0. Each erase block is stored starting from page 0 within that
+block, and again all the pages are concatenated without padding. For
+each page the actual data is stored first, followed by the spare (OOB)
+data.
+    </para>
+    <para>
+A logfile is a plain text file, not a binary file. It holds one log
+event per line. Some of these lines can be rather long if READ or
+WRITE logging is enabled. The fields within each line are separated by
+a single space. The first field indicates the type of record. The next
+two fields are call counts, one for the event in question and one for
+the total number of calls into the driver. The remaining fields depend
+on the record type.
+    </para>
+    <programlisting width=72>
+I 0 0 1247514233 562000 synth_nand.dat 2048 64 32 1024
+   </programlisting>
+    <para>
+This is an initialization record when the logfile is created. There
+have been no calls to the driver yet so the two counts are 0. The next
+two fields are the <structfield>tv_sec</structfield>
+and <structfield>tv_usec</structfield> timestamp values which are also
+written into the NAND image file. This allows logfiles and image files
+to be matched up. The remaining fields identify the page size, the
+spare size, the number of pages per erase block, and the number of
+erase blocks.
+   </para>
+    <programlisting width=72>
+F 2 4 43 0      
+    </programlisting>
+    <para>
+This is a call into the driver's <function>factorybad</function>
+function. It is the second such call, and the fourth call into the
+driver. The query is for erase block 42, and that block has not been
+marked as factory-bad.
+    </para>
+    <programlisting width=72>
+ r 5 12 32736 0x0200f0c0 2048 0x0200eeb0 64
+   </programlisting>
+    <para>
+This is a <literal>read</literal> event. It is the fifth page read
+into the driver and the 12th call. The request is for page number
+32736. 2048 bytes of data should be read into a buffer at location
+0x0200f0c0, and 64 bytes of OOB data should be read into 0x0200eeb0.
+    </para>
+    <programlisting width=72>
+Rd 5 12 32736 0x0200f0c0 2048 FFFFFFFFFFFF&hellip;
+Ro 5 12 32736 0x0200eeb0 64   FFFFFFFFFFFF&hellip;
+    </programlisting>
+    <para>
+These are two <literal>READ</literal> log events corresponding to the
+previous <literal>read</literal>. The first line <literal>Rd</literal>
+is for the data part, and the final field consists of 4096 bytes of
+hexadecimal data. The second line <literal>Ro</literal> is for the OOB
+part and the final field consists of 128 bytes of hexadecimal data.
+    </para>
+    <programlisting width=72>
+w 1 1030 32736 0x0200f0c0 2048 0x0200eed0 64
+Wd 1 1030 32736 0x0200f0c0 2048 FFFFFFFFF3FFFFFFFFFFCF&hellip;
+Wo 1 1030 32736 0x0200eed0 64 FFFFFFFFFFFFFFFF426274&hellip;
+    </programlisting>
+    <para>
+These lines show a <literal>write</literal> log event and
+a <literal>WRITE</literal> log event for the same call into the
+driver. The fields are the same as for <literal>read</literal>
+and <literal>READ</literal>.
+    </para>
+    <programlisting width=72>
+E 2 1031 1022
+    </programlisting>
+    <para>
+This logs an erase call into the library for block 1022. It is the
+second erase call, and by this time there have been 1031 calls into
+the driver.
+    </para>
+    <programlisting width=72>
+Bb 1 2857 631
+&hellip;
+Bp 2 4012 3189 99
+   </programlisting>
+    <para>
+These lines show bad block injections. The first is for an erase
+operation for block 631. That erase call is about to fail with EIO and
+the block will be marked bad. The second is for a write operation for
+page 3189, which is part of erase block 99. That write operation is
+about to fail and all of erase block 99 will be marked bad.
+    </para>
+  </refsect1>
+
+  <refsect1 id="devs-nand-synth-install"><title>Installation</title>
+    <para>
+Before a synthetic target eCos application can use a NAND device it is
+necessary to build and install host-side support. The relevant code
+resides in the <filename class="directory">host</filename>
+subdirectory of the synthetic target NAND package and building it
+involves the
+standard <command>configure</command>, <command>make</command>
+and  <command>make install</command> steps. The implementation of the
+NAND support does not require any executables, just a Tcl
+script <filename>nand.tcl</filename> and some support files, so
+the <command>make</command> step is a no-op.      
+    </para>
+    <para>
+There are two main ways of building the host-side software. It is
+possible to build both the generic host-side software and all
+package-specific host-side software, including the NAND support,
+in a single build tree. This involves using the
+<command>configure</command> script at the toplevel of the eCos
+repository. For more information on this, see the
+<filename>README.host</filename> file at the top of the repository.
+Note that if you have an existing build tree which does not include
+the synthetic target NAND support then it will be necessary to
+rerun the toplevel configure script: the search for appropriate
+packages happens at configure time.
+    </para>
+    <para>
+The alternative is to build just the host-side for this package.
+This requires a separate build directory, building directly in the
+source tree is disallowed. The <command>configure</command> options
+are much the same as for a build from the toplevel, and the
+<filename>README.host</filename> file can be consulted for more
+details. It is essential that the NAND support be configured with
+the same <option>--prefix</option> option as other eCos host-side
+software, especially the I/O auxiliary provided by the 
+synthetic target architectural HAL package, otherwise the I/O auxiliary will be
+unable to locate the NAND support.
+    </para>
+  </refsect1>
+
+  <refsect1 id="devs-nand-synth-tests"><title>Test programs</title>
+<glosslist>
+<glossentry><glossterm>bbt</glossterm><glossdef><para>Bad Block Table
+unit test. Finds a readable block, then fiddles with its status in the
+BBT confirming expected behaviour.  Requires the synthetic NAND device.
+</para></glossdef></glossentry>
+<glossentry><glossterm>multipagebbt</glossterm><glossdef><para>As for
+<emphasis>bbt</emphasis> but insists that the device parameters mean that
+the BBT spans multiple pages on-chip. (This is perhaps a contrived case,
+but might crop up in future with larger devices, so needed to be tested.)
+</para></glossdef></glossentry>
+<glossentry><glossterm>eccdamage</glossterm><glossdef><para>An ECC
+error fuzzing exercise.  Requires
+<option>CYGSEM_NAND_SYNTH_RANDOMLY_LOSE</option>, which induces
+pseudo-random bit errors; after 1,000 runs, the number of errors corrected
+is reported.</para></glossdef></glossentry>
+</glosslist>
+    <para>
+</para>
+</refsect1>
+
+</refentry>
+</part>

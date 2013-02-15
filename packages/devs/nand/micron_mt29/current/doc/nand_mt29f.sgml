@@ -1,0 +1,178 @@
+<!-- DOCTYPE chapter PUBLIC "-//OASIS//DTD DocBook V3.1//EN" -->
+
+<!-- =============================================================== -->
+<!--                                                                 -->
+<!--     nand_mt29f.sgml                                             -->
+<!--                                                                 -->
+<!--     NAND chip support for the Micron MT29F family               -->
+<!--                                                                 -->
+<!-- =============================================================== -->
+<!-- ####ECOSDOCCOPYRIGHTBEGIN####                                   -->
+<!-- =============================================================== -->
+<!-- Copyright (C) 2009 Free Software Foundation, Inc.               -->
+<!-- This material may be distributed only subject to the terms      -->
+<!-- and conditions set forth in the Open Publication License, v1.0  -->
+<!-- or later (the latest version is presently available at          -->
+<!-- http://www.opencontent.org/openpub/)                            -->
+<!-- Distribution of the work or derivative of the work in any       -->
+<!-- standard (paper) book form is prohibited unless prior           -->
+<!-- permission obtained from the copyright holder                   -->
+<!-- =============================================================== -->
+<!-- ####ECOSDOCCOPYRIGHTEND####                                     -->
+<!-- =============================================================== -->
+<!-- #####DESCRIPTIONBEGIN####                                       -->
+<!--                                                                 -->
+<!-- Author(s):   wry                                                -->
+<!-- Contact(s):  wry                                                -->
+<!-- Date:        2010-04-20                                         -->
+<!-- Version:     0.01                                               -->
+<!--                                                                 -->
+<!-- ####DESCRIPTIONEND####                                          -->
+<!-- =============================================================== -->
+
+<chapter id="nanddev-micron-mt29f">
+<title>Micron MT29F family NAND chips</title>
+<sect1 id="nanddev-micton-mt29f-overview">
+<title>Overview</title>
+
+<para>
+The <varname>CYGPKG_DEVS_NAND_MICRON_MT29F</varname> driver package currently
+provides support for the Micron MT29F2G08 NAND flash chip, and
+is intended to be expanded to provide support for more of the MT29F family.
+</para>
+
+<para>
+Most users will not need to interact with this package; it should be included
+as a hardware dependency on all appropriate targets.
+This package provides only inline code fragments which are intended to be
+included and instantiated by the target platform HAL and provided with
+appropriate board-specific low-level functions allowing it to access
+the hardware.
+</para>
+
+<note><para> The large-page parts in this family are not quite 
+ONFI-compliant, but this code could
+probably be extended to a much wider set of chips - or indeed to the ONFI
+specification - without too much trouble. Appropriate definitions will
+be required for the chip identifier, decoding of the Read ID response,
+and the chip's blockcount-bits and device-size fields.
+</para>
+</note>
+
+<note><para> At the present time, this driver has the limitation that it only
+supports 8-bit parts.  This is an area of probable future expansion.
+</para></note>
+</sect1>
+
+<sect1 id="devs-nand-micron-mt29f-instantiation"><title>Using this driver in a board port</title>
+<para>
+This driver's top-level chip support is currently provided as three files:</para>
+
+<glosslist>
+<glossentry><glossterm><filename>cyg/devs/nand/mt29f_generic.h</filename></glossterm>
+<glossdef><para>Prototypes the low-level chip access functions required by
+the chip driver and
+declares a private struct for use by the driver.</para></glossdef></glossentry>
+<glossentry><glossterm><filename>cyg/devs/nand/mt29f_generic.inl</filename></glossterm>
+<glossdef><para>Implements high-level chip functions and includes mt29f_generic_lp.inl.
+This file is not intended to be compiled on its own, but to be included by the source file in a platform HAL which implements the low-level functions.
+</para></glossdef></glossentry>
+<glossentry><glossterm><filename>cyg/devs/nand/mt29f_generic_lp.inl</filename></glossterm>
+<glossdef><para>Implements those high-level chip functions which are specific to large-page chips, completing the driver and exposing it via the <constant>CYG_NAND_FUNS</constant> macro.  
+This file is not intended to be compiled or included directly by platform code.
+</para></glossdef></glossentry>
+</glosslist>
+
+<para> A platform HAL would typically make use of this driver in a single source file
+with the following steps:</para>
+<itemizedlist>
+<listitem><para> Declare a local private struct with contents as appropriate,</para></listitem>
+<listitem><para> <filename>#include &lt;cyg/devs/nand/mt29f_generic.h&gt;</filename></para></listitem>
+<listitem><para> implement the required low-level functions,</para></listitem>
+<listitem><para> <filename>#include &lt;cyg/devs/nand/mt29f_generic.inl&gt;</filename></para></listitem>
+<listitem><para> declare a list of the supported <constant>mt29f_subtype</constant> which may appear on the board, terminated by <constant>MT29F_SUBTYPE_SENTINEL</constant></para></listitem>
+<listitem><para> declare a static instance of the <constant>mt29f_priv</constant> struct containing pointers to that list and to an instance of the local-private struct</para></listitem>
+<listitem><para> finally, instantiate the chip with the <constant>CYG_NAND_DEVICE</constant> macro, selecting the ECC and OOB semantics to use.
+<note><para>If there is more than one chip available on the board, each needs its own CYG_NAND_DEVICE with a distinct name and device name, its own instance of the mt29f_priv struct.</para></note>
+</para></listitem>
+</itemizedlist>
+
+<para>
+For more details about the infrastructure provided by the NAND layer
+and the semantics it expects of the chip driver, refer to 
+<xref linkend="io-nand-overview">. </para>
+
+<sect2 id="nanddev-micron-mt29f-memory-note">
+<title>Memory usage</title>
+<para>
+As discussed in <xref linkend="nand-devs-highlevel">, the chip
+initialisation function must set up the <varname>bbt.data</varname>
+pointer in the <type>cyg_nand_device</type> struct.  This driver does so
+by including a large byte array in the <type>mt29f_priv</type>
+struct whose size is controlled by CDL depending on the enabled
+chip support.
+That struct is intended to be allocated as a static struct in the
+data or BSS segment (one per chip), which avoids adding a dependency
+on <function>malloc</function>.</para>
+</sect2>
+
+<sect2 id="nanddev-micron-mt29f-functions-required">
+<title>Low-level functions required from the platform HAL</title>
+<para>
+These functions are prototyped in 
+<filename>mt29f_generic.h</filename>.
+They have no return value ("void"), except for
+<function>read_data_1</function> which returns the byte it has read.</para>
+
+<glosslist>
+<glossentry><glossterm><function>write_cmd(device,
+command)</function></glossterm><glossdef><para>Writes a single command
+byte to the chip's command latch.</para></glossdef></glossentry>
+<glossentry><glossterm><function>write_addrbytes(device, pointer to bytes,
+number of bytes)</function></glossterm><glossdef><para>Writes a number
+of address bytes in turn to the chip's address latch.</para></glossdef></glossentry>
+<glossentry><glossterm><function>CYG_BYTE read_data_1(device)</function>,
+<function>read_data_bulk(device, output pointer, number of
+bytes)</function></glossterm><glossdef><para>Reads data from the device,
+respectively a single byte and in bulk.</para></glossdef></glossentry>
+<glossentry><glossterm><function>write_data_1(device, byte)</function>,
+<function>write_data_bulk(device, data pointer, number of
+bytes)</function></glossterm><glossdef><para>Writes data to the device,
+respectively a single byte and in bulk.</para></glossdef></glossentry>
+<glossentry><glossterm><function>wait_ready_or_time(device, initial delay,
+fallback time)</function></glossterm><glossdef><para>Wait for the chip
+to signal READY line or, if this line is not available, fall back to a worst-case
+time delay (measured in microseconds).</para></glossdef></glossentry>
+<glossentry><glossterm><function>wait_ready_or_status(device,
+mask)</function></glossterm><glossdef><para>Wait for the chip to signal
+READY line or, if this line is not available, enter a loop waiting for
+its Status register (ANDed with the given mask) to be non-zero.</para></glossdef></glossentry>
+<glossentry><glossterm><function>mt29f_devlock(device)</function>,
+<function>mt29f_devunlock(device)</function></glossterm>
+<glossdef><para>Hooks for any board-specific locking which may be required in
+addition to the NAND library's chip-level locking. (This would be useful if, for example, 
+access to multiple chips was mediated by a single set of GPIO lines which ought not to be
+invoked concurrently.)</para>
+</glossdef></glossentry>
+<glossentry><glossterm><function>mt29f_plf_init(device)</function></glossterm>
+<glossdef><para>Board-level platform initialisation hook. This is called very early
+on in the chip initialisation routine; it should set up any locking required by the
+devlock and devunlock functions, interrupts for the driver and any further lines
+required to access the chip as approprate.
+<emphasis>Once this has returned, the chip driver assumes that the platform is fully prepared
+for it to call the other chip access functions.</emphasis></para>
+</glossdef></glossentry>
+<glossentry><glossterm><function>mt29f_plf_partition_setup(device)</function></glossterm>
+<glossdef><para>Board-level partition initialisation hook.
+This should set up the <varname>partition</varname> array of the device struct in a way which
+is appropriate to the platform. For example, the partitions may be set as fixed ranges
+of blocks, or by CDL. This is called at the end of the chip initialisation routine and may,
+for example, call into the chip to read out a "partition table" if one is present on the board.
+<emphasis>If you do not set up partitions, applications will not be able to use the high-level
+chip access functions provided the NAND library.</emphasis></para>
+</glossdef></glossentry>
+</glosslist>
+</sect2>
+</sect1>
+</chapter>
+

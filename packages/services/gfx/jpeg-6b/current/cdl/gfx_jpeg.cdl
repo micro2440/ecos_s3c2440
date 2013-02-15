@@ -1,0 +1,88 @@
+# ====================================================================
+#
+#      gfx_jpeg.cdl
+#
+#      libjpeg 6b configuration data
+#
+# ====================================================================
+#####ECOSGPLCOPYRIGHTBEGIN####
+## -------------------------------------------
+## This file is part of eCos, the Embedded Configurable Operating System.
+## Copyright (C) 1998, 1999, 2000, 2001, 2002 Red Hat, Inc.
+##
+## eCos is free software; you can redistribute it and/or modify it under
+## the terms of the GNU General Public License as published by the Free
+## Software Foundation; either version 2 or (at your option) any later version.
+##
+## eCos is distributed in the hope that it will be useful, but WITHOUT ANY
+## WARRANTY; without even the implied warranty of MERCHANTABILITY or
+## FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+## for more details.
+##
+## You should have received a copy of the GNU General Public License along
+## with eCos; if not, write to the Free Software Foundation, Inc.,
+## 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA.
+##
+## As a special exception, if other files instantiate templates or use macros
+## or inline functions from this file, or you compile this file and link it
+## with other works to produce a work based on this file, this file does not
+## by itself cause the resulting work to be covered by the GNU General Public
+## License. However the source code for this file must still be made available
+## in accordance with section (3) of the GNU General Public License.
+##
+## This exception does not invalidate any other reasons why a work based on
+## this file might be covered by the GNU General Public License.
+##
+## Alternative licenses for eCos may be arranged by contacting Red Hat, Inc.
+## at http://sources.redhat.com/ecos/ecos-license/
+## -------------------------------------------
+#####ECOSGPLCOPYRIGHTEND####
+# ====================================================================
+######DESCRIPTIONBEGIN####
+#
+# Author(s):      Alexander Neundorf <neundorf@kde.org>
+# Contributors:
+# Date:           2008-03-14
+#
+#####DESCRIPTIONEND####
+#
+# ====================================================================
+
+cdl_package CYGPKG_GFX_JPEG {
+    display       "JPEG library"
+    description   "
+                  This package provides support for JPEG compression and
+                  decompression."
+
+    requires      CYGPKG_ISOINFRA
+
+    compile    jcapimin.c jcapistd.c jccoefct.c jccolor.c jcdctmgr.c jchuff.c
+    compile    jcinit.c jcmainct.c jcmarker.c jcmaster.c jcomapi.c jcparam.c
+    compile    jcphuff.c jcprepct.c jcsample.c jctrans.c jdapimin.c jdapistd.c
+    compile    jdcoefct.c jdcolor.c jddctmgr.c jdhuff.c
+    compile    jdinput.c jdmainct.c jdmarker.c jdmaster.c jdmerge.c jdphuff.c
+    compile    jdpostct.c jdsample.c jdtrans.c jerror.c jfdctflt.c jfdctfst.c
+    compile    jfdctint.c jidctflt.c jidctfst.c jidctint.c jidctred.c jquant1.c
+    compile    jquant2.c jutils.c jmemmgr.c jmemnobs.c
+
+        cdl_option CYGFUN_JPEG_WITH_STDIO {
+           display "With file (stdio) functions"
+           default_value 0
+           requires CYGPKG_IO_FILEIO
+           compile jdatadst.c jdatasrc.c
+        }
+
+        cdl_option CYGPKG_GFX_JPEG_CFLAGS_ADD {
+            display "Additional compiler flags"
+            flavor  data
+            no_define
+            default_value { "-D__ECOS__ " }
+            description   "
+                This option modifies the set of compiler flags for
+                building this package. These flags are used in addition
+                to the set of global flags."
+        }
+}
+
+# ====================================================================
+# EOF compress_zlib.cdl

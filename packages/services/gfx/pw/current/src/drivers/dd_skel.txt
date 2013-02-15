@@ -1,0 +1,225 @@
+/*===========================================================================
+//
+//        dd_skel.txt
+//
+//        PW skeletal driver code 
+//
+//===========================================================================
+//===========================================================================
+// This file is part of PW graphic library.
+// Copyright (C) 2004 Savin Zlobec 
+//
+// PW is free software; you can redistribute it and/or modify it under
+// the terms of the GNU General Public License as published by the Free
+// Software Foundation; either version 2 or (at your option) any later version.
+//
+// PW is distributed in the hope that it will be useful, but WITHOUT ANY
+// WARRANTY; without even the implied warranty of MERCHANTABILITY or
+// FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+// for more details.
+//
+// You should have received a copy of the GNU General Public License along
+// with PW; if not, write to the Free Software Foundation, Inc.,
+// 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA.
+//
+// As a special exception, if other files instantiate templates or use macros
+// or inline functions from this file, or you compile this file and link it
+// with other works to produce a work based on this file, this file does not
+// by itself cause the resulting work to be covered by the GNU General Public
+// License. However the source code for this file must still be made available
+// in accordance with section (3) of the GNU General Public License.
+//
+// This exception does not invalidate any other reasons why a work based on
+// this file might be covered by the GNU General Public License.
+//=========================================================================== */
+
+#include <i_pwin.h>
+
+/* -------------------------------------------------------------------------- */
+
+#define DPY_WIDTH    128 /* Display width */
+#define DPY_HEIGHT   64  /* Display height */
+
+/* -------------------------------------------------------------------------- */
+
+static Pw_Display pw_dpy;
+
+static Pw_Bitmap bit_buff1;
+static Pw_Bitmap bit_buff2;
+static Pw_Byte   bit_buff1_bits[((DPY_WIDTH*DPY_HEIGHT + 0x07) >> 3)];
+static Pw_Byte   bit_buff2_bits[((DPY_WIDTH*DPY_HEIGHT + 0x07) >> 3)];
+
+/* -------------------------------------------------------------------------- */
+
+static void 
+_InitBitBuff(void)
+{
+    Pw_BitmapCreate(DPY_WIDTH, DPY_HEIGHT, bit_buff1_bits, &bit_buff1);
+    Pw_BitmapCreate(DPY_WIDTH, DPY_HEIGHT, bit_buff2_bits, &bit_buff2);
+
+    IPw_BitmapFillRect(&bit_buff1, 0, 0, DPY_WIDTH, DPY_HEIGHT, 0);
+    IPw_BitmapFillRect(&bit_buff2, 0, 0, DPY_WIDTH, DPY_HEIGHT, 0);
+}
+
+static void 
+_FreeBitBuff(void)
+{
+    Pw_BitmapDestroy(&bit_buff1);
+    Pw_BitmapDestroy(&bit_buff2);
+}
+
+static void 
+_DrawBitmapByte(Pw_uInt baddr, Pw_Byte dbyte)
+{
+    /* Change byte at baddr to dbyte in LCD display memory */
+    #error "NEEDS IMPLEMENTATION"
+}
+
+static Pw_Bool 
+_OpenDisplay(void)
+{
+    _InitBitBuff();
+    return(TRUE);
+}
+
+static void 
+_CloseDisplay(void)
+{
+    _FreeBitBuff();
+}
+
+static Pw_uLong 
+_GetCurrentMS(void)
+{
+    #error "NEEDS IMPLEMENTATION"
+} 
+
+static void 
+_MainLoop(Pw_Display* dpy)
+{
+    static Pw_uLong otime; 
+
+    otime = _GetCurrentMS();
+
+    while (TRUE)
+    {
+        #error "NEEDS IMPLEMENTATION"
+        /*
+         * on keyboard input send
+         *      IPw_EventKeyPressed(dpy, keycode) and
+         *      IPw_EventKeyReleased(dpy, keycode)
+         */ 
+        if (dpy->close)
+            return;
+
+        if ((_GetCurrentMS() - otime) > 0)
+        {
+            IPw_TimeoutProcess(dpy, _GetCurrentMS() - otime);
+            otime = _GetCurrentMS();
+        }
+    } 
+} 
+
+/* -------------------------------------------------------------------------- */
+
+static void 
+_DrawPoint(Pw_GC* gc, Pw_Coord x, Pw_Coord y)
+{
+    IPw_BitmapDrawPoint(&bit_buff1, x, y, 
+        ((Pw_GCGetColor(gc) == pw_black_pixel) ? 0 : 1));
+} 
+
+static void
+_DrawPoints(Pw_GC* gc, Pw_Coord x, Pw_Coord y, Pw_Byte bits)
+{
+    IPw_BitmapDrawPoints(&bit_buff1, x, y, bits,
+        ((Pw_GCGetColor(gc) == pw_black_pixel) ? 0 : 1));
+} 
+
+static void 
+_DrawHorLine(Pw_GC* gc, Pw_Coord x1, Pw_Coord y1, Pw_Coord x2)
+{
+    IPw_BitmapDrawHorLine(&bit_buff1, x1, y1, x2,
+        ((Pw_GCGetColor(gc) == pw_black_pixel) ? 0 : 1));
+} 
+
+static void 
+_DrawVerLine(Pw_GC* gc, Pw_Coord x1, Pw_Coord y1, Pw_Coord y2)
+{
+    IPw_BitmapDrawVerLine(&bit_buff1, x1, y1, y2,
+        ((Pw_GCGetColor(gc) == pw_black_pixel) ? 0 : 1));
+} 
+
+static void 
+_FillRect(Pw_GC* gc, Pw_Coord x, Pw_Coord y, Pw_Coord w, Pw_Coord h)
+{
+    IPw_BitmapFillRect(&bit_buff1, x, y, w, h,
+        ((Pw_GCGetColor(gc) == pw_black_pixel) ? 0 : 1));
+} 
+
+static void 
+_DisplayRefresh(Pw_Display* dpy, Pw_Rectangle* area)
+{
+    IPw_BitmapDiff(&bit_buff1, &bit_buff2, area, _DrawBitmapByte);
+    /* Refresh LCD image if needed */
+    #error "NEEDS IMPLEMENTATION"
+}
+
+static Pw_Int 
+_DisplayGetXInputValue(Pw_Display* dpy, Pw_uInt num)
+{
+    return(0);
+} 
+
+extern Pw_Bool Pw_Init(Pw_Display* dpy);
+
+Pw_Int 
+main(Pw_Int argc, Pw_Char** argv)
+{
+    Pw_Int     fcnt, fcnt2;
+    Pw_DD      dd;
+    Pw_LLD     lld;
+
+    lld.draw_point      = _DrawPoint;
+    lld.draw_points     = _DrawPoints;
+    lld.draw_hor_line   = _DrawHorLine;
+    lld.draw_ver_line   = _DrawVerLine;
+    lld.fill_rect       = _FillRect;
+    dd.lld              = &lld;
+    dd.display_refresh  = _DisplayRefresh;
+    dd.get_xinput_value = _DisplayGetXInputValue;
+    dd.init_components  = Pw_Init;
+
+    if(!_OpenDisplay())
+        return(-1);
+
+    IPw_InitInternals();
+
+    fcnt = IPw_RegionGetFreeCnt();
+
+    IPw_DisplayOpen(DPY_WIDTH, DPY_HEIGHT, &dd, &pw_dpy);
+
+    if (!IPw_InitComponents(&pw_dpy))
+    {
+        IPw_DisplayClose(&pw_dpy);
+        _CloseDisplay();
+        return(0);
+    }
+
+    _MainLoop(&pw_dpy);
+
+    IPw_DisplayClose(&pw_dpy);
+
+    _CloseDisplay();
+
+    fcnt2 = IPw_RegionGetFreeCnt();
+
+    IPW_FAIL(fcnt2 == fcnt, ("Some regions not freed! (%d != %d)", 
+             fcnt2, fcnt));
+
+    return(0);
+}
+
+/*---------------------------------------------------------------------------
+// end of dd_skel.txt 
+//--------------------------------------------------------------------------- */

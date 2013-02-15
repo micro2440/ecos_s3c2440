@@ -1,0 +1,8 @@
+
+synth_device console {
+    filter s_assert {^ASSERT<.*>:.*} -foreground Red           
+    filter s_warn   {^WARN<.*>:.*}   -foreground Red           
+    filter s_fail   {^FAIL<.*>:.*}   -foreground Red           
+    filter s_trace  {^TRC<.*>:.*}    -foreground SeaGreen4    
+    filter s_note   {^NOTE:.*}       -foreground MidnightBlue  
+}

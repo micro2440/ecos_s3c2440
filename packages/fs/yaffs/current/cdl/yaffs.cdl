@@ -1,0 +1,308 @@
+# ====================================================================
+#
+#      yaffs.cdl
+#
+#      YAFFS (Yet Another Flash File System) port to eCos
+#
+# ====================================================================
+# ####ECOSGPLCOPYRIGHTBEGIN####                                            
+# -------------------------------------------                              
+# This file is part of eCos, the Embedded Configurable Operating System.   
+# Copyright (C) 2009 eCosCentric Limited.
+#
+# eCos is free software; you can redistribute it and/or modify it under    
+# the terms of the GNU General Public License as published by the Free     
+# Software Foundation; either version 2 or (at your option) any later      
+# version.                                                                 
+#
+# eCos is distributed in the hope that it will be useful, but WITHOUT      
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or    
+# FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License    
+# for more details.                                                        
+#
+# You should have received a copy of the GNU General Public License        
+# along with eCos; if not, write to the Free Software Foundation, Inc.,    
+# 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.            
+#
+# As a special exception, if other files instantiate templates or use      
+# macros or inline functions from this file, or you compile this file      
+# and link it with other works to produce a work based on this file,       
+# this file does not by itself cause the resulting work to be covered by   
+# the GNU General Public License. However the source code for this file    
+# must still be made available in accordance with section (3) of the GNU   
+# General Public License v2.                                               
+#
+# This exception does not invalidate any other reasons why a work based    
+# on this file might be covered by the GNU General Public License.         
+# -------------------------------------------                              
+# ####ECOSGPLCOPYRIGHTEND####                                              
+# ====================================================================
+######DESCRIPTIONBEGIN####
+#
+# Author(s):      wry
+# Date:           2009-05-01
+#
+#####DESCRIPTIONEND####
+#
+# ====================================================================
+
+cdl_package CYGPKG_FS_YAFFS {
+    display         "YAFFS flash filesystem"
+    parent          CYGPKG_FS
+	include_files	
+	# there's nothing to include as we patch in to the fstab.
+
+	requires		CYGPKG_IO_FILEIO
+	requires		CYGPKG_IO_NAND
+    requires        ( CYGSEM_IO_NAND_APPINTERFACE_VERSION > 1 )
+	requires        CYGPKG_ISOINFRA
+	requires        CYGINT_ISO_ERRNO
+	requires        CYGINT_ISO_ERRNO_CODES
+	requires        CYGINT_ISO_MALLOC
+	requires		CYGPKG_LIBC_STDLIB
+	# STDLIB requires CYGINT_ISO_CTYPE, which is provided by CYGPKG_LIBC_I18N
+	requires		CYGPKG_LIBC_STRING
+
+    requires        { CYGPKG_REDBOOT implies (CYGMEM_REDBOOT_WORKSPACE_HEAP_SIZE >= 0x00014000) }
+
+	implements		CYGINT_IO_FILEIO_FS
+
+	compile		-library=libextras.a 	ecos-yaffs.c
+    compile         yaffs_checkptrw.c       \
+                    yaffs_guts.c            \
+                    yaffs_nand.c            \
+                    yaffs_ecc.c             \
+                    yaffs_packedtags1.c     \
+                    yaffs_packedtags2.c     \
+                    yaffs_tagscompat.c      \
+                    yaffs_tagsvalidity.c    \
+                    ecos-yaffs-nand.c       \
+                    ecos-yaffs-diriter.c
+
+    #doc             ref/yaffs.html
+    description     "
+        This package provides the YAFFS filesystem which is intended for 
+		NAND flash devices."
+
+	cdl_component CYGPKG_FS_YAFFS_OPTIONS {
+		display "YAFFS build options"
+		flavor  none
+		description   "
+			Package specific build options including control over
+			compiler flags used only in building the YAFFS code."
+
+		cdl_option CYGPKG_FS_YAFFS_CFLAGS_ADD {
+			display "Additional compiler flags"
+			flavor  data
+			no_define
+			default_value { "-Werror" }
+			description   "
+				This option modifies the set of compiler flags for
+				building the YAFFS filesystem. These flags
+				are used in addition to the set of global flags."
+			}
+		cdl_option CYGPKG_FS_YAFFS_CFLAGS_REMOVE {
+			display "Suppressed compiler flags"
+			flavor  data
+			no_define
+			default_value { "" }
+			description   "
+				This option modifies the set of compiler flags for
+				building the YAFFS filesystem. These flags
+				are removed from the set of global flags if present."
+		}
+	}
+
+	cdl_option CYGSEM_FS_YAFFS_SMALLPAGE_MODE {
+	   display         "YAFFS mode for small page devices"
+	   flavor          data
+	   default_value   { "YAFFS2" }
+	   legal_values    { "YAFFS1" "YAFFS2" }
+	   description     "
+           Small page devices - those with 512 bytes/page - may operate
+           in either YAFFS1 mode, or YAFFS2 with the inband tags option. 
+           This option selects the mode to use. Note that some chips
+           cannot support YAFFS1 mode, so this option may not be
+           relevant to you."
+	}
+
+	cdl_option CYGSEM_FS_YAFFS_CACHE_SHORT_NAMES {
+			display "Cache short filenames in RAM"
+			default_value 1
+			description	"
+				If set, short names are cached in memory.
+				This consumes more RAM, but allows faster file look-ups."
+	}
+
+	cdl_option CYGSEM_FS_YAFFS_OMIT_YAFFS2_CODE {
+        display "Omit YAFFS2-specific code"
+        default_value 1
+        active_if { CYGSEM_FS_YAFFS_SMALLPAGE_MODE == "YAFFS1" }
+        active_if CYGNUM_NAND_PAGEBUFFER <= 512
+        description	"
+            This option causes some of the YAFFS2-specific code
+            to be omitted from the build, in order to reduce code
+            size. Obviously, this can only ever work if all your devices
+            are small-page, and you have configured YAFFS to run them in
+            YAFFS1 mode."
+	}
+
+	cdl_option CYGPKG_FS_YAFFS_RET_DIRENT_DTYPE {
+		display			"Support for fileio's struct dirent d_type field"
+		flavor			bool
+		default_value	0
+		active_if		CYGPKG_FILEIO_DIRENT_DTYPE
+		description		"This option controls whether the YAFFS filesystem 
+						 supports setting fileio's struct dirent d_type field.
+					     If this option is enabled, d_type will be set."
+	}
+
+	cdl_option CYGNUM_FS_YAFFS_RESERVED_BLOCKS {
+		display			"Number of reserved blocks"
+		flavor			data
+		default_value	5
+		legal_values	2 to 0x7fffffff
+		description		"
+			The number of eraseblocks YAFFS should keep in reserve to allow
+			for garbage collection and for block failures. A
+			minimum value of 5 is recommended if you are using real
+			(non-synthetic) NAND devices; wizards may wish to tune it to
+			improve performance. Note that this setting is a global 
+			default and may be tuned per-device by a mount-time option."
+	}
+
+	cdl_option CYGNUM_FS_YAFFS_SHORTOP_CACHES {
+		display			"Number of cache entries"
+		flavor			data
+		default_value	10
+		legal_values	0 to 0x7fffffff
+		description		"
+			The number of page cache entries to use. Values from 10 to 20
+			are recommended; set to 0 to disable cacheing.
+			Wizards may wish to tune this value to improve performance.
+			Note that this setting is a global default and may be
+			configured per-device by a mount-time option. There is also
+            an upper limit hard-wired into the code as
+            YAFFS_MAX_SHORT_OP_CACHES; numbers in excess of this ceiling
+            will be ignored."
+	}
+
+	cdl_option CYGNUM_FS_YAFFS_TEMP_BUFFERS {
+		display			"Number of preallocated temporary page buffers"
+		flavor			data
+		default_value	6
+		legal_values	0 to 0x7fffffff
+		description		"
+            At mount time, YAFFS preallocates a number of temporary
+            buffers, which are used in many places throughout the code. 
+            This setting controls how many.
+            If YAFFS ever runs out of temporary buffers, it calls malloc to
+            dynamically allocate further buffers as needed. 
+            Most users will not need to change this setting, but it may
+            prove a useful tuning parameter."
+	}
+
+    cdl_option CYGNUM_FS_YAFFS_TRACEMASK {
+        display         "Output trace mask"
+        flavor          data
+        default_value   0
+        legal_values    0 to 0xffffffff
+        description     "
+            The YAFFS filesystem has a number of categories in which it can
+            emit diagnostic output. They are controlled by this setting,
+            which is a bitfield; set bits enable various categories.
+            For the definition of the bits used, see yportenv.h
+            (\"Tracing flags\"). They tend only to be useful for debugging.
+            "
+    }
+
+    cdl_option CYGSEM_FS_YAFFS_TRACEFN {
+        display         "Enable debug tracing"
+        flavor          booldata
+        default_value   { "diag_printf" }
+        description     "
+            If enabled, diagnostic output from YAFFS will be sent to
+            this function."
+    }
+
+    cdl_option CYGSEM_FS_YAFFS_COMPATIBILITY_ECOSPRO {
+        display         "eCosPro compatibility mode"
+        flavor          bool
+        default_value   0
+        description     "This package is targetted at eCos but may be
+            built under eCosPro by setting this switch."
+    }
+
+	cdl_option CYGPKG_FS_YAFFS_TESTS {
+		display "YAFFS filesystem tests"
+		flavor data
+		no_define
+		calculated { "tests/fops tests/mounttime" 
+                   . " tests/yaffs1 tests/yaffs2 tests/yaffs4"
+                   . " tests/yaffs5 tests/yaffs6"
+        }
+		description "
+		This special option specifies the set of tests to build for YAFFS."
+	}
+
+    cdl_component CYGPKG_FS_YAFFS_TESTING {
+        display          "Testing configuration"
+        default_value    1
+
+        define_proc {
+            puts $::cdl_system_header "/***** Synthdisk driver proc output start *****/"
+            puts $::cdl_system_header "#define CYGDAT_DEVS_DISK_CFG <pkgconf/fs_yaffs.h>"
+            puts $::cdl_system_header "/***** Synthdisk driver proc output end  *****/"        
+        }
+
+        
+        cdl_option CYGDAT_DEVS_DISK_TEST_DEVICE {
+            display      "Test device driver"
+            flavor       data
+            default_value { CYGPKG_DEVS_NAND_SYNTH?"\"synth/0\"":"\"onboard/0\"" }
+        }
+
+        cdl_option CYGDAT_DEVS_DISK_TEST_MOUNTPOINT {
+            display      "Test filesystem mountpoint"
+            flavor       data
+            default_value {"\"/nand\"" }
+        }
+
+        cdl_option CYGDAT_DEVS_DISK_TEST_DIRECTORY {
+            display      "Test directory on test device"
+            flavor       data
+            default_value {"\"/test\"" }
+        }
+
+        
+        cdl_option CYGDAT_DEVS_DISK_TEST_DEVICE2 {
+            display      "Second Test device driver"
+            flavor       data
+            default_value { CYGPKG_DEVS_NAND_SYNTH?"\"synth/1\"":"\"onboard/1\"" }
+        }
+
+        cdl_option CYGDAT_DEVS_DISK_TEST_MOUNTPOINT2 {
+            display      "Second Test filesystem mountpoint"
+            flavor       data
+            default_value {"\"/nand2\"" }
+        }
+
+        cdl_option CYGDAT_DEVS_DISK_TEST_DIRECTORY2 {
+            display      "Test directory on second test device"
+            flavor       data
+            default_value {"\"/test\"" }
+        }
+
+    }
+
+    cdl_option CYGSEM_FS_YAFFS_NAND_APPINTERFACE {
+        display     "NAND application interface version required"
+        flavor      data
+        calculated  2
+        no_define
+        description "This is the version of the NAND application
+            interface which this package requires. It exists to flag
+            up changes at the CDL level."
+    }
+
+}

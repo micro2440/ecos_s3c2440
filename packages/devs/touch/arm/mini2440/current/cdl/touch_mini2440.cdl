@@ -1,0 +1,116 @@
+#==========================================================================
+# 
+#       touch_mini2440.cdl
+# 
+#       eCos configuration data for the MINI2440 touchscreen
+# 
+#==========================================================================
+## ####ECOSGPLCOPYRIGHTBEGIN####                                            
+## -------------------------------------------                              
+## This file is part of eCos, the Embedded Configurable Operating System.   
+## Copyright (C) 1998, 1999, 2000, 2001, 2002 Free Software Foundation, Inc.
+##
+## eCos is free software; you can redistribute it and/or modify it under    
+## the terms of the GNU General Public License as published by the Free     
+## Software Foundation; either version 2 or (at your option) any later      
+## version.                                                                 
+##
+## eCos is distributed in the hope that it will be useful, but WITHOUT      
+## ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or    
+## FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License    
+## for more details.                                                        
+##
+## You should have received a copy of the GNU General Public License        
+## along with eCos; if not, write to the Free Software Foundation, Inc.,    
+## 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.            
+##
+## As a special exception, if other files instantiate templates or use      
+## macros or inline functions from this file, or you compile this file      
+## and link it with other works to produce a work based on this file,       
+## this file does not by itself cause the resulting work to be covered by   
+## the GNU General Public License. However the source code for this file    
+## must still be made available in accordance with section (3) of the GNU   
+## General Public License v2.                                               
+##
+## This exception does not invalidate any other reasons why a work based    
+## on this file might be covered by the GNU General Public License.         
+## -------------------------------------------                              
+## ####ECOSGPLCOPYRIGHTEND####                                              
+#==========================================================================
+######DESCRIPTIONBEGIN####
+# 
+# Author(s):    Ricky Wu
+# Contributors: Ricky Wu
+# Date:         2011-03-30
+# Purpose:      
+# Description:  Touchscreen drivers for MINI2440
+# 
+#####DESCRIPTIONEND####
+# 
+#==========================================================================
+
+cdl_package CYGPKG_DEVS_TOUCH_MINI2440 {
+    display     "Touch screen driver for mini2440"
+    include_dir cyg/io
+
+    active_if   CYGPKG_IO_FILEIO
+    requires    CYGPKG_IO
+    requires    CYGFUN_KERNEL_API_C
+    requires    CYGPKG_HAL_ARM_ARM9_MINI2440
+    active_if   !CYGSEM_MINI2440_LCD_COMM
+
+    compile       -library=libextras.a mini2440_ts.c
+
+    description "Touch screen driver for the MINI2440"
+	cdl_option CYGPKG_DEVS_TOUCH_BLOCKREAD {
+        display       "touch driver is blockread method"
+ 		flavor		    bool
+        default_value	0
+        description "
+        This option modifies the touch driver read method to blockread or not."
+    }
+	cdl_component CYGPKG_DEVS_TOUCH_MINI2440_TESTS {
+        display "MINI2440 touch screen tests"
+        flavor  data
+        no_define
+        calculated { 
+	    "tests/touchtest.c"
+        }
+        description   "
+                This option causes the building of a simple test 
+                for MINI2440 Touch screen driver."
+    }
+    cdl_component CYGPKG_DEVS_TOUCH_MINI2440_OPTIONS {
+        display "options"
+        flavor  none
+        no_define
+
+        cdl_option CYGPKG_DEVS_TOUCH_MINI2440_CFLAGS {
+            display       "Additional compiler flags"
+            flavor        data
+            no_define
+            default_value { "" }
+            description "
+               This option modifies the set of compiler flags for
+               building the touchscreen driver package. These flags
+               are used in addition to the set of global flags."
+        }
+
+        cdl_option CYGDAT_DEVS_TOUCH_MINI2440_NAME {
+            display "Device name for the touch screen driver"
+            flavor data
+            default_value {"\"/dev/ts\""}
+            description " This option specifies the name of the touch screen device"
+        }
+
+        cdl_option CYGNUM_DEVS_TOUCH_MINI2440_EVENT_BUFFER_SIZE {
+            display "Number of events the driver can buffer"
+            flavor data
+            default_value { 32 }
+            description "
+                This option defines the size of the touchscreen device internal
+            buffer. The cyg_io_read() function will return as many of these
+            as there is space for in the buffer passed."
+        }
+    }
+}

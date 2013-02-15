@@ -1,0 +1,151 @@
+<!-- DOCTYPE chapter PUBLIC "-//OASIS//DTD DocBook V3.1//EN" -->
+
+<!-- =============================================================== -->
+<!--                                                                 -->
+<!--     nand_k9.sgml                                                -->
+<!--                                                                 -->
+<!--     NAND chip support for the ST Microelectronics xxxx3a family -->
+<!--                                                                 -->
+<!-- =============================================================== -->
+<!-- ####ECOSDOCCOPYRIGHTBEGIN####                                   -->
+<!-- =============================================================== -->
+<!-- Copyright (C) 2009 Free Software Foundation, Inc.               -->
+<!-- This material may be distributed only subject to the terms      -->
+<!-- and conditions set forth in the Open Publication License, v1.0  -->
+<!-- or later (the latest version is presently available at          -->
+<!-- http://www.opencontent.org/openpub/)                            -->
+<!-- Distribution of the work or derivative of the work in any       -->
+<!-- standard (paper) book form is prohibited unless prior           -->
+<!-- permission obtained from the copyright holder                   -->
+<!-- =============================================================== -->
+<!-- ####ECOSDOCCOPYRIGHTEND####                                     -->
+<!-- =============================================================== -->
+<!-- #####DESCRIPTIONBEGIN####                                       -->
+<!--                                                                 -->
+<!-- Author(s):   wry                                                -->
+<!-- Contact(s):  wry                                                -->
+<!-- Date:        2009/09/01                                         -->
+<!-- Version:     0.01                                               -->
+<!--                                                                 -->
+<!-- ####DESCRIPTIONEND####                                          -->
+<!-- =============================================================== -->
+
+<chapter id="devs-nand-st-xxxx3a">
+<title>ST Microelectronics NANDxxxx3a chips</title>
+<sect1 id="devs-nand-st-xxxx3a-overview">
+<title>Overview</title>
+
+<para>
+The <varname>CYGPKG_DEVS_NAND_ST_NANDXXXX3A</varname> driver package 
+provides support for the NANDxxxx3A chip family by ST Microelectronics.
+</para>
+
+<para>
+Most users will only need to add this package to their eCos configuration
+and not need to interact with it further. This package provides only an
+inline code fragment which is intended to be instantiated by the target
+platform HAL and provided with appropriate board-specific low-level
+functions allowing it to access the hardware.
+</para>
+
+<sect2 id="devs-nand-st-xxxx3a-instantiation"><title>Using this driver in a board port</title>
+<para>
+This driver's chip support is currently provided as two files:</para>
+
+<glosslist>
+<glossentry><glossterm><filename>cyg/devs/nand/nandxxxx3a.h</filename></glossterm>
+<glossdef><para>Prototypes the low-level chip access functions required by the chip driver,
+declares a private struct for use by the driver and provides a
+<constant>NANDXXXX3A_DEVICE</constant> macro for convenience.</para></glossdef></glossentry>
+<glossentry><glossterm><filename>cyg/devs/nand/nandxxxx3a.inl</filename></glossterm>
+<glossdef><para>Implements high-level chip functions and exposes them via the <constant>CYG_NAND_FUNS</constant> macro.  This file is not intended to be compiled on its own.
+</para></glossdef></glossentry>
+</glosslist>
+
+<para>
+A platform HAL would typically make use of this driver in a single source file with the following steps:</para>
+<itemizedlist>
+<listitem><para> Declare a private struct and one or more static instances of it as appropriate,</para></listitem>
+<listitem><para> <filename>#include &lt;cyg/devs/nand/nandxxxx3a.h&gt;</filename></para></listitem>
+<listitem><para> implement the required low-level functions,</para></listitem>
+<listitem><para> <filename>#include &lt;cyg/devs/nand/nandxxxx3a.inl&gt;</filename></para></listitem>
+<listitem><para> finally, instantiate the chip with the <constant>NANDXXXX3A_DEVICE</constant> macro the appropriate number of times, giving each chip an appropriate name and its own private struct if need be, declaring its size, and selecting the ECC and OOB semantics to use.</para></listitem>
+</itemizedlist>
+
+<para>
+For more details about the infrastructure provided by the NAND layer
+and the semantics it expects of the chip driver, refer to
+<xref linkend="io-nand-overview">. An example driver instantiation can be
+found in the platform HAL for the STM3210E-EVAL board.
+</para></sect2>
+
+<sect2 id="devs-nand-st-xxxx3a-memory-note">
+<title>Memory usage note</title>
+<para>
+As discussed in <xref linkend="nand-devs-highlevel">, the chip
+initialisation function must set up the <varname>bbt.data</varname>
+pointer in the <type>cyg_nand_device</type> struct.  This driver does so
+by including pointer to a sufficiently large byte array in the
+<type>nandxxx3a_priv</type> struct. That struct is intended to be
+allocated as a static struct in the data or BSS segment (one per chip),
+which avoids adding a dependency on <function>malloc</function>.
+</para></sect2>
+
+<sect2 id="devs-nand-st-xxxx3a-functions-required">
+<title>Low-level functions required from the platform HAL</title>
+<para>
+These functions are prototyped in 
+<filename>nandxxxx3a.h</filename>.
+They have no return value ("void"), except where indicated.</para>
+
+<glosslist>
+<glossentry><glossterm><function>write_cmd(device,
+command)</function></glossterm><glossdef><para>Writes a single command
+byte to the chip's command latch.</para></glossdef></glossentry>
+<glossentry><glossterm><function>write_addrbytes(device, pointer to bytes,
+number of bytes)</function></glossterm><glossdef><para>Writes a number
+of address bytes in turn to the chip's address latch.</para></glossdef></glossentry>
+<glossentry><glossterm><type>CYG_BYTE</type> <function>read_data_1(device)</function>,
+<function>read_data_bulk(device, output pointer, number of
+bytes)</function></glossterm><glossdef><para>Reads data from the device,
+respectively a single byte and in bulk.</para></glossdef></glossentry>
+<glossentry><glossterm><function>write_data_1(device, byte)</function>,
+<function>write_data_bulk(device, data pointer, number of
+bytes)</function></glossterm><glossdef><para>Writes data to the device,
+respectively a single byte and in bulk.</para></glossdef></glossentry>
+<glossentry><glossterm><function>wait_ready_or_time(device, initial delay,
+fallback time)</function></glossterm><glossdef><para>Wait for the chip
+to signal READY or, if this line is not available, fall back to a worst-case
+time delay (measured in microseconds).</para></glossdef></glossentry>
+<glossentry><glossterm><function>wait_ready_or_status(device,
+mask)</function></glossterm><glossdef><para>Wait for the chip to signal
+READY or, if this line is not available, enter a loop waiting for
+its Status register (ANDed with the given mask) to be non-zero.</para></glossdef></glossentry>
+<glossentry><glossterm><function>nandxxxx3a_devlock(device)</function>,
+<function>nandxxxx3a_devunlock(device)</function></glossterm>
+<glossdef><para>Hooks for any board-specific locking which may be required in
+addition to the NAND library's chip-level locking. (This would be useful if, for example, 
+access to multiple chips was mediated by a single set of GPIO lines which ought not to be
+invoked concurrently.)</para>
+</glossdef></glossentry>
+<glossentry><glossterm><type>int</type> <function>nandxxxx3a_plf_init(device)</function></glossterm>
+<glossdef><para>Board-level platform initialisation hook. This is called very early
+on in the chip initialisation routine; it should set up any locking required by the
+devlock and devunlock functions, interrupts for the driver and any further lines
+required to access the chip as approprate.
+<emphasis>Once this has returned, the chip driver assumes that the platform is fully prepared
+for it to call the other chip access functions.</emphasis></para>
+</glossdef></glossentry>
+<glossentry><glossterm><type>int</type> <function>nandxxxx3a_plf_partition_setup(device)</function></glossterm>
+<glossdef><para>Board-level partition initialisation hook.
+This should set up the <varname>partition</varname> array of the device struct in a way which
+is appropriate to the platform. For example, the partitions may be set as fixed ranges
+of blocks, or by CDL. This is called at the end of the chip initialisation routine and may,
+for example, call into the chip to read out a "partition table" if one is present on the board.
+<emphasis>If you do not set up partitions, applications will not be able to use the high-level
+chip access functions provided the NAND library.</emphasis></para>
+</glossdef></glossentry>
+</glosslist>
+</sect2>
+</sect1>
+</chapter>

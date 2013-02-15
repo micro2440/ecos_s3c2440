@@ -1,0 +1,66 @@
+# ====================================================================
+#
+#      nandxxxx3a.cdl
+#
+#      Drivers for the ST Microelectronics familiy of NANDxxxx3A chips.
+#
+# ====================================================================
+# ####ECOSGPLCOPYRIGHTBEGIN####                                            
+# -------------------------------------------                              
+# This file is part of eCos, the Embedded Configurable Operating System.   
+# Copyright (C) 2009 Free Software Foundation
+#
+# eCos is free software; you can redistribute it and/or modify it under    
+# the terms of the GNU General Public License as published by the Free     
+# Software Foundation; either version 2 or (at your option) any later      
+# version.                                                                 
+#
+# eCos is distributed in the hope that it will be useful, but WITHOUT      
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or    
+# FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License    
+# for more details.                                                        
+#
+# You should have received a copy of the GNU General Public License        
+# along with eCos; if not, write to the Free Software Foundation, Inc.,    
+# 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.            
+#
+# As a special exception, if other files instantiate templates or use      
+# macros or inline functions from this file, or you compile this file      
+# and link it with other works to produce a work based on this file,       
+# this file does not by itself cause the resulting work to be covered by   
+# the GNU General Public License. However the source code for this file    
+# must still be made available in accordance with section (3) of the GNU   
+# General Public License v2.                                               
+#
+# This exception does not invalidate any other reasons why a work based    
+# on this file might be covered by the GNU General Public License.         
+# -------------------------------------------                              
+# ####ECOSGPLCOPYRIGHTEND####                                              
+# ====================================================================
+######DESCRIPTIONBEGIN####
+#
+# Author(s):      Simon Kallweit
+# Date:           2009-06-30
+#
+#####DESCRIPTIONEND####
+#
+# ====================================================================
+
+cdl_package CYGPKG_DEVS_NAND_ST_NANDXXXX3A {
+    display         "ST Microelectronics NANDxxxx3A chip family support"
+    parent          CYGPKG_IO_NAND
+    active_if		CYGPKG_IO_NAND
+	# This does NOT implement CYGHWR_IO_NAND_DEVICE - it only provides
+	# functions for the platform HAL to draw on and itself implement
+	# CYGHWR_IO_NAND_DEVICE.
+    include_dir     cyg/devs/nand
+    description     "
+        This package provides support for the ST Microelectronics NANDxxxx3A
+        family of NAND flash devices. It is intended to be easy to port to
+        further chips from the same family. This package can only be used in
+        conjunction with the platform HAL for the target, in order to bring it
+        in and properly configure it to talk to the hardware present."
+    # This is a 512 byte page device.
+    requires        ( CYGNUM_NAND_PAGEBUFFER >= 512 )
+    requires        ( CYGSEM_IO_NAND_INTERFACE_VERSION >= 2 )
+}

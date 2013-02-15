@@ -1,0 +1,109 @@
+2010-05-11  Ross Younger  <wry@ecoscentric.com>
+
+	* nand_synth.c, nand_synth.cdl: Allow simulation of multiple
+	writes to a page if CYGSEM_NAND_SYNTH_ALLOW_MULTIPLE_WRITES
+	is set.
+
+2009-11-13  Ross Younger  <wry@ecoscentric.com>
+
+	* Don't provide BBT data if it's not called for.
+
+2009-11-09  Ross Younger  <wry@ecoscentric.com>
+
+	* nand_synth.c: Provide read_part_page function.
+
+2009-11-06  Ross Younger  <wry@ecoscentric.com>
+
+	* nand_synth.c: Use new fast ECC implementation.
+
+2009-10-19  Ross Younger  <wry@ecoscentric.com>
+
+	* nand_synth.c: Update to interface v2.
+	* nand_synth.cdl: Require CYGSEM_IO_NAND_INTERFACE_VERSION >= 2.
+
+2009-09-28  Ross Younger  <wry@ecoscentric.com>
+
+	* tests: Don't put unreasonably large arrays on stack. Build-fix
+	multipagebbt.
+
+2009-09-16  Ross Younger  <wry@ecoscentric.com>
+
+	* tests: Buildfix bbt.c and eccdamage.c
+	* nand_synth.c: Ensure that bit errors induced by RANDOMLY_LOSE mode
+	can occur over the whole range of the page data and spare area.
+
+2009-08-28  Ross Younger  <wry@ecoscentric.com>
+
+	* tests: Add bbt.c and multipagebbt.c (moved from io/nand).
+	* doc/synth_nand.sgml: Document this device's test programs.
+
+2009-07-31  Bart Veer  <bartv@ecoscentric.com>
+
+	* doc/synth_nand.sgml, src/nand_synth.c: add support for per-block
+	erase counts and per-page write counts to monitor wear-levelling.
+
+2009-07-14  Bart Veer  <bartv@ecoscentric.com>
+
+	* host/nand.tcl (dialog): avoid the use of max() for compatibility
+	with ancient Tcl 8.4 installations.
+
+	* host/configure.in: allow builds on x86_64 machines.
+
+	* host/configure: regenerate.
+
+	*  doc/synth_nand.sgml, doc/dialog1.png, doc/dialog2.png: add
+	documentation.
+
+2009-07-09  Bart Veer  <bartv@ecoscentric.com>
+
+	* host/nand.tcl, host/nand.tdf, src/nand_synth.c: first attempt at
+	a full-blown implementation complete with logging and error
+	injection.
+
+	* cdl/nand_synth.cdl: add dependencies on other packages. Fix name
+	of CYGDAT_NAND_SYNTH_FILENAME option as per CDL coding standards.
+
+2009-06-17  Ross Younger  <wry@eCosCentric.com>
+
+	* Retab for consistency with other eCos sources.
+	* Move eccdamage test from io/nand.
+
+2009-03-06  Ross Younger  <wry@eCosCentric.com>
+
+	* New package. Synthetic NAND flash chip.
+
+//===========================================================================
+// ####ECOSGPLCOPYRIGHTBEGIN####                                            
+// -------------------------------------------                              
+// This file is part of eCos, the Embedded Configurable Operating System.   
+// Copyright (C) 2009 eCosCentric Limited.
+//
+// eCos is free software; you can redistribute it and/or modify it under    
+// the terms of the GNU General Public License as published by the Free     
+// Software Foundation; either version 2 or (at your option) any later      
+// version.                                                                 
+//
+// eCos is distributed in the hope that it will be useful, but WITHOUT      
+// ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or    
+// FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License    
+// for more details.                                                        
+//
+// You should have received a copy of the GNU General Public License        
+// along with eCos; if not, write to the Free Software Foundation, Inc.,    
+// 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.            
+//
+// As a special exception, if other files instantiate templates or use      
+// macros or inline functions from this file, or you compile this file      
+// and link it with other works to produce a work based on this file,       
+// this file does not by itself cause the resulting work to be covered by   
+// the GNU General Public License. However the source code for this file    
+// must still be made available in accordance with section (3) of the GNU   
+// General Public License v2.                                               
+//
+// This exception does not invalidate any other reasons why a work based    
+// on this file might be covered by the GNU General Public License.         
+// -------------------------------------------                              
+// ####ECOSGPLCOPYRIGHTEND####                                              
+//===========================================================================
+	
+

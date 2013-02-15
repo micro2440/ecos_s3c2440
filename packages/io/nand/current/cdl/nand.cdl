@@ -1,0 +1,296 @@
+# ====================================================================
+#
+#      nand.cdl
+#
+#      eCos NAND flash library
+#
+# ====================================================================
+# ####ECOSGPLCOPYRIGHTBEGIN####                                            
+# -------------------------------------------                              
+# This file is part of eCos, the Embedded Configurable Operating System.   
+# Copyright (C) 2009 eCosCentric Limited.
+#
+# eCos is free software; you can redistribute it and/or modify it under    
+# the terms of the GNU General Public License as published by the Free     
+# Software Foundation; either version 2 or (at your option) any later      
+# version.                                                                 
+#
+# eCos is distributed in the hope that it will be useful, but WITHOUT      
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or    
+# FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License    
+# for more details.                                                        
+#
+# You should have received a copy of the GNU General Public License        
+# along with eCos; if not, write to the Free Software Foundation, Inc.,    
+# 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.            
+#
+# As a special exception, if other files instantiate templates or use      
+# macros or inline functions from this file, or you compile this file      
+# and link it with other works to produce a work based on this file,       
+# this file does not by itself cause the resulting work to be covered by   
+# the GNU General Public License. However the source code for this file    
+# must still be made available in accordance with section (3) of the GNU   
+# General Public License v2.                                               
+#
+# This exception does not invalidate any other reasons why a work based    
+# on this file might be covered by the GNU General Public License.         
+# -------------------------------------------                              
+# ####ECOSGPLCOPYRIGHTEND####                                              
+# ====================================================================
+######DESCRIPTIONBEGIN####
+#
+# Author(s):      wry
+# Date:           2009-02-23
+#
+#####DESCRIPTIONEND####
+#
+# ====================================================================
+
+
+cdl_package CYGPKG_IO_NAND {
+    display         "NAND Flash access library"
+    parent          CYGPKG_IO
+    include_dir     cyg/nand
+    doc             ref/nand.html
+    description     "
+        This package provides support for NAND flash devices. It provides
+		both an application and a device interface. Further 
+		platform-specific package(s) are required to implement drivers for 
+		the particular devices present."
+
+	requires		CYGINT_ISO_ERRNO_CODES
+    requires        CYGPKG_ISOINFRA
+    requires        CYGPKG_LIBC_STRING
+	requires		CYGINT_ISO_STRING_MEMFUNCS
+    requires        CYGPKG_LIBC_STDLIB
+
+    # If YAFFS is loaded, ensure that is knows how to drive us.
+    requires ( CYGPKG_FS_YAFFS implies CYGSEM_FS_YAFFS_NAND_APPINTERFACE > 1)
+
+    compile         nand.c nand_bbt.c nand_oob.c util.c
+    compile         nand_ecc_mtd.c
+    compile         nand_ecc_mtd_fast.c
+    compile         -library=libextras.a nandinit.cxx
+
+    cdl_option    CYGSEM_IO_NAND_APPINTERFACE_VERSION {
+        display         "NAND application interface version"
+        flavor          data
+        calculated      2
+        description     "The current version of the application
+            interface provided by
+            the NAND layer. As the NAND device interface evolves, this
+            version number will be incremented; applications may require
+            that the layer provide a certain level in order
+            to function correctly."
+    }
+
+    cdl_option    CYGSEM_IO_NAND_INTERFACE_VERSION {
+        display         "NAND device interface version"
+        flavor          data
+        calculated      2
+        description     "The current version of the device interface
+            provided by 
+            the NAND layer. As the NAND device interface evolves, this
+            version number will be incremented; devices may require
+            that the infrastructure provide a certain level in order
+            to function correctly."
+    }
+
+	cdl_component CYGPKG_IO_NAND_OPTIONS {
+		display "NAND library build options"
+		flavor  none
+		description   "
+			Package specific build options including control over
+			compiler flags used only in building the NAND library
+			flash driver."
+
+		cdl_option CYGPKG_IO_NAND_CFLAGS_ADD {
+			display "Additional compiler flags"
+			flavor  data
+			no_define
+			default_value { "-Werror" }
+			description   "
+				This option modifies the set of compiler flags for
+				building the NAND flash library. These flags
+				are used in addition to the set of global flags."
+			}
+		cdl_option CYGPKG_IO_NAND_CFLAGS_REMOVE {
+			display "Suppressed compiler flags"
+			flavor  data
+			no_define
+			default_value { "" }
+			description   "
+				This option modifies the set of compiler flags for
+				building the NAND flash library. These flags
+				are removed from the set of global flags if present."
+		}
+	}
+
+	cdl_interface CYGHWR_IO_NAND_DEVICE {
+		display 	"Hardware NAND device drivers"
+		requires	{ CYGHWR_IO_NAND_DEVICE >= 1 }
+		description "
+			This calculated option shows the number of NAND devices on 
+			the current platform. The generic NAND support is disabled 
+			unless at least one device is present."
+	}
+
+    cdl_component CYGSEM_IO_NAND_DEBUG {
+        display "NAND debug output"
+        default_value   1
+        description "
+            The NAND library has the ability to report debugging information
+            by sending it to a printf-like function.
+            This option is the master switch for all such output.
+        "
+
+        cdl_option CYGSEM_IO_NAND_DEBUG_FN_DEFAULT {
+            display         "Global output function"
+            flavor          data
+            default_value   { "cyg_nand_defaultprintf" }
+            description     "
+                This is the default function to use to send debugging output
+                from the NAND library.
+                (It may be overridden by individual device drivers.)
+                The default value is a wrapper to diag_printf.
+            "
+        }
+
+        cdl_option CYGSEM_IO_NAND_DEBUG_LEVEL {
+            display			"Debug chatter level"
+            flavor			data
+            legal_values	0 to 9
+            default_value	1
+            description		"
+                This option configures the degree to which the NAND code will
+                print status messages as various operations are undertaken.
+                Setting it to zero disables the status chatter altogether.
+                Messages, when enabled, are printed using the printf-like
+                function provided when the library is initialised.
+                (Note that serious problems are always reported via
+                the output function, regardless of this setting.)"
+            compile         nand_chatter.c
+        }
+    }
+
+	cdl_option CYGSEM_IO_NAND_READONLY {
+		display			"NAND layer is read-only"
+		flavor			bool
+		default_value	0
+		description		"
+			Selecting this option will globally disable all code which
+			writes to NAND devices."
+	}
+
+	cdl_option CYGSEM_IO_NAND_USE_BBT {
+		display			"NAND layer uses bad-block tables"
+		flavor			bool
+		default_value	1
+		description		"
+            Select this option to instruct the NAND library to use
+            a Bad Block Table to keep track of blocks marked bad
+            at the factory and any bad blocks which may develop during
+            the life of the device.  This is strongly recommended."
+	}
+
+    cdl_option CYGNUM_NAND_PAGEBUFFER {
+        display         "Largest page size to support"
+        flavor          data
+        default_value   0
+        description     "
+            This package requires a certain amount of RAM to use as a 
+            page buffer from time to time. This value is the
+            size of that buffer. You should not normally require to
+            edit this; it is affected by whichever NAND chip driver
+            packages are present."
+    }
+
+    cdl_option CYGNUM_NAND_MAX_READ_RETRIES {
+        display         "Automatic read retry limit"
+        flavor          data
+        default_value   2
+        description     "
+            Typical NAND chips may exhibit occasional bit errors,
+            which may be transient. This library implements 
+            an Error Correcting Code in order to detect and
+            automatically repair these.  If you are unlucky,
+            a combination of errors may cause an indication of 
+            an uncorrectable error, which would normally be returned to
+            the caller as EIO. This setting causes the library
+            to automatically retry a read, up to this many times,
+            in the hope that the error is transient;
+            set to 0 if you wish to disable this behaviour."
+    }
+
+	cdl_option CYGNUM_NAND_MAX_PARTITIONS {
+		display			"Maximum number of partitions on a NAND chip"
+		flavor			data
+		default_value	4
+		legal_values	1 to 0x7fffffff
+		description "
+			Within every NAND device there are one or more logical partitions,
+			akin to partitions on a hard drive. This setting is the 
+			largest number of partitions that the NAND library and
+		    drivers will support. The default, 4, should be enough for
+			most purposes. (Higher settings consume more RAM at runtime.)
+
+			N.B. This setting does not configure how partitions are defined;
+			that is set up in the platform HAL."
+	}
+
+	# We do not currently provide CDL options to switch the choice of
+	# ECC algorithm, OOB area layout and BBT semantics on and off.
+	# This could easily be added in future if there was a demand for it.
+	# Bear in mind that as well as conditioning the code in/out, each
+	# chip instance must select its own semantics individually (in case
+	# of multiple devices with different requirements), so there may
+	# well not be a need for a top-level switch.
+
+    cdl_option CYGBLD_IO_NAND_BUILD_UTILS {
+        display "Build NAND library utilities"
+        default_value 0
+        no_define
+        description "If set, builds the NAND library utilities at the
+            same time as the tests. Beware that misuse of these utilities
+            can seriously mess up your NAND chip; they should not be
+            played with lightly."
+    }
+
+    cdl_option CYGSEM_IO_NAND_INSTRUMENT_TIMING {
+        display     "Instrument NAND call timings"
+        default_value 0
+        description "This option enables timing instrumentation within
+            the NAND library. It is intended only to assist driver
+            authors during development.
+            Normal users should not set this option."
+    }
+
+    cdl_option CYGBLD_IO_NAND_UTILS {
+        display "The list of utilities to build."
+		flavor data
+        calculated { " utils/erasenand utils/erase_bbt_dangerous" }
+        no_define
+    }
+
+	cdl_option CYGPKG_IO_NAND_TESTS {
+		display "NAND library tests"
+		flavor data
+		no_define
+		calculated { "tests/nandunit tests/nand_readlimits tests/nand_readwrite"
+                     . " tests/nand_rwbenchmark tests/nand_sweccwalk tests/nand_eccequiv"
+                     . (CYGBLD_IO_NAND_BUILD_UTILS ? CYGBLD_IO_NAND_UTILS : "")
+        }
+		description "This special option specifies the set of NAND
+                    library tests (and utilities, if enabled) to build."
+	}
+
+    cdl_option    CYGSEM_IO_NAND_ECC_SPLIT_FUNCTION {
+        flavor      bool
+        calculated  1
+        display     "ECC interface has split calculate function"
+        description "This marker option signals to NAND drivers that the
+            split calculate-ECC function is present. Some require it."
+        no_define
+    }
+
+}

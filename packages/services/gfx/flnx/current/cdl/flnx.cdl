@@ -1,0 +1,221 @@
+# ====================================================================
+#
+#      minigui.cdl
+#
+#      minigui configuration data
+#
+# ====================================================================
+#####ECOSGPLCOPYRIGHTBEGIN####
+## -------------------------------------------
+## This file is part of eCos, the Embedded Configurable Operating System.
+## Copyright (C) 1998, 1999, 2000, 2001, 2002, 2011 eMBosLab, Inc.
+##
+## eCos is free software; you can redistribute it and/or modify it under
+## the terms of the GNU General Public License as published by the Free
+## Software Foundation; either version 2 or (at your option) any later version.
+##
+## eCos is distributed in the hope that it will be useful, but WITHOUT ANY
+## WARRANTY; without even the implied warranty of MERCHANTABILITY or
+## FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+## for more details.
+##
+## You should have received a copy of the GNU General Public License along
+## with eCos; if not, write to the Free Software Foundation, Inc.,
+## 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA.
+##
+## As a special exception, if other files instantiate templates or use macros
+## or inline functions from this file, or you compile this file and link it
+## with other works to produce a work based on this file, this file does not
+## by itself cause the resulting work to be covered by the GNU General Public
+## License. However the source code for this file must still be made available
+## in accordance with section (3) of the GNU General Public License.
+##
+## This exception does not invalidate any other reasons why a work based on
+## this file might be covered by the GNU General Public License.
+##
+## Alternative licenses for eCos may be arranged by contacting Red Hat, Inc.
+## at http://sources.redhat.com/ecos/ecos-license/
+## -------------------------------------------
+#####ECOSGPLCOPYRIGHTEND####
+# ====================================================================
+######DESCRIPTIONBEGIN####
+#
+# Author(s):      Ricky Wu
+# Original data:  Ricky Wu
+# Contributors:
+# Date:           2011-04-04
+#
+#####DESCRIPTIONEND####
+#
+# ====================================================================
+
+cdl_package CYGPKG_FLNX {
+    display       "flnx"
+    requires      CYGPKG_POSIX
+    requires      CYGPKG_ISOINFRA
+    requires      CYGINT_ISO_C_TIME_TYPES
+    requires      CYGINT_ISO_STRERROR
+    requires      CYGINT_ISO_ERRNO
+    requires      CYGINT_ISO_ERRNO_CODES
+    requires      CYGINT_ISO_MALLOC
+    requires      CYGINT_ISO_STRING_BSD_FUNCS
+    requires      CYGPKG_IO_FILEIO
+    requires      CYGPKG_MICROWINDOWS
+    requires      CYGBLD_MICROWINDOWS_ECOS
+    description   "flnx is FLTK on Nano-X, the packages is from flnx 0.18"
+
+    # Note: separating the stack implementation from the common support leads
+    # to some rather incestious config file relationships.
+    define_proc {
+    }
+
+    compile                             \
+        src/cmap.cxx		        \
+        src/dump_compose.c		\
+        src/Fl_abort.cxx		\
+        src/Fl_add_idle.cxx		\
+        src/Fl_Adjuster.cxx		\
+        src/Fl_Animator.cxx		\
+        src/fl_arc.cxx		        \
+        src/fl_arci.cxx		        \
+        src/Fl_arg.cxx		        \
+        src/fl_ask.cxx		        \
+        src/Fl_Bitmap.cxx		\
+        src/Fl_Box.cxx		        \
+        src/fl_boxtype.cxx		\
+        src/Fl_Browser_.cxx		\
+        src/Fl_Browser.cxx		\
+        src/Fl_Browser_load.cxx	        \
+        src/Fl_Button.cxx		\
+        src/fl_call_main.c		\
+        src/Fl_Chart.cxx		\
+        src/Fl_Check_Button.cxx	        \
+        src/Fl_Choice.cxx		\
+        src/Fl_Clock.cxx		\
+        src/Fl_Color_Chooser.cxx	\
+        src/fl_color.cxx		\
+        src/Fl_Counter.cxx		\
+        src/fl_cursor.cxx		\
+        src/fl_curve.cxx		\
+        src/Fl_cutpaste.cxx		\
+        src/Fl.cxx			\
+        src/Fl_Dial.cxx		        \
+        src/fl_diamond_box.cxx	        \
+        src/Fl_display.cxx		\
+        src/Fl_Double_Window.cxx	\
+        src/fl_draw.cxx		        \
+        src/fl_draw_image.cxx	        \
+        src/fl_draw_pixmap.cxx	        \
+        src/fl_engraved_label.cxx	\
+        src/fl_file_chooser.cxx	        \
+        src/fl_font.cxx		        \
+        src/Fl_get_key.cxx		\
+        src/Fl_get_system_colors.cxx    \
+        src/Fl_Gl_Choice.cxx	        \
+        src/Fl_Gl_Overlay.cxx	        \
+        src/Fl_Gl_Window.cxx	        \
+        src/Fl_grab.cxx		        \
+        src/Fl_Group.cxx		\
+        src/Fl_Image.cxx		\
+        src/Fl_Input_.cxx		\
+        src/Fl_Input.cxx		\
+        src/fl_labeltype.cxx	        \
+        src/Fl_Light_Button.cxx	        \
+        src/Fl_Menu_add.cxx		\
+        src/Fl_Menu_Bar.cxx		\
+        src/Fl_Menu_Button.cxx	        \
+        src/Fl_Menu_.cxx		\
+        src/Fl_Menu.cxx		        \
+        src/Fl_Menu_global.cxx  	\
+        src/Fl_Menu_Window.cxx	        \
+        src/Fl_Multi_Label.cxx	        \
+        src/Fl_Output.cxx		\
+        src/fl_oval_box.cxx		\
+        src/fl_overlay.cxx		\
+        src/fl_overlay_visual.cxx	\
+        src/Fl_Overlay_Window.cxx	\
+        src/Fl_own_colormap.cxx	        \
+        src/Fl_Pack.cxx		        \
+        src/Fl_Pixmap.cxx		\
+        src/Fl_Positioner.cxx	        \
+        src/fl_rect.cxx		        \
+        src/Fl_Repeat_Button.cxx	\
+        src/Fl_Return_Button.cxx	\
+        src/Fl_Roller.cxx		\
+        src/fl_round_box.cxx	        \
+        src/Fl_Round_Button.cxx	        \
+        src/fl_rounded_box.cxx	        \
+        src/fl_scroll_area.cxx	        \
+        src/Fl_Scrollbar.cxx	        \
+        src/Fl_Scroll.cxx		\
+        src/fl_set_font.cxx		\
+        src/fl_set_fonts.cxx	        \
+        src/fl_set_gray.cxx		\
+        src/fl_shadow_box.cxx	        \
+        src/fl_shortcut.cxx		\
+        src/fl_show_colormap.cxx	\
+        src/Fl_Single_Window.cxx	\
+        src/Fl_Slider.cxx		\
+        src/fl_symbols.cxx		\
+        src/Fl_Tabs.cxx		        \
+        src/Fl_Tile.cxx		        \
+        src/Fl_Valuator.cxx		\
+        src/Fl_Value_Input.cxx	        \
+        src/Fl_Value_Output.cxx	        \
+        src/Fl_Value_Slider.cxx	        \
+        src/fl_vertex.cxx		\
+        src/Fl_visual.cxx		\
+        src/Fl_Widget.cxx		\
+        src/Fl_Window.cxx		\
+        src/Fl_Window_fullscreen.cxx    \
+        src/Fl_Window_hotspot.cxx	\
+        src/Fl_Window_iconize.cxx	\
+        src/Fl_x.cxx		        \
+        src/forms_bitmap.cxx	        \
+        src/forms_compatability.cxx	\
+        src/forms_free.cxx		\
+        src/forms_fselect.cxx	        \
+        src/forms_pixmap.cxx	        \
+        src/forms_timer.cxx		\
+        src/gl_draw.cxx		        \
+        src/gl_start.cxx		\
+        src/glut_compatability.cxx	\
+        src/glut_font.cxx		\
+        src/numericsort.c		\
+        src/scandir.c		        \
+        src/vsnprintf.c
+
+    cdl_component CYGPKG_FLNX_OPTIONS {
+        display "Build options"
+        flavor  none
+        no_define
+        description   "
+	    Package specific build options including control over
+	    compiler flags used only in building this package,
+	    and details of which tests are built."
+
+
+        cdl_option CYGPKG_FLNX_CFLAGS_ADD {
+            display "Additional compiler flags"
+            flavor  data
+            no_define
+            default_value { "-I$(PREFIX)/include/FL -I$(REPOSITORY)/$(PACKAGE)/src -DNANO_X -DECOS" }
+            description   "
+                This option modifies the set of compiler flags for
+                building the flnx package.
+                These flags are used in addition to the set of global flags."
+        }
+
+        cdl_option CYGPKG_FLNX_CFLAGS_REMOVE {
+            display "Suppressed compiler flags"
+            flavor  data
+            no_define
+            default_value { "" }
+            description   "
+                This option modifies the set of compiler flags for
+                building the flnx package.
+                These flags are removed from the set of global flags
+                if present."
+        }
+    }
+}

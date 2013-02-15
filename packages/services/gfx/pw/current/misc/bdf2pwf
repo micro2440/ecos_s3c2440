@@ -1,0 +1,409 @@
+#!/usr/bin/perl -w
+
+# =============================================================================
+#
+#        bdf2pwf 
+#
+#        BDF to PW graphic library font converter
+#
+# =============================================================================
+# =============================================================================
+#
+#  Copyright (C) 2004 Savin Zlobec
+#
+#  This program is free software; you can redistribute it and/or modify
+#  it under the terms of the GNU General Public License as published by
+#  the Free Software Foundation; either version 2, or (at your option)
+#  any later version.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+#  GNU General Public License for more details.
+#
+#  You should have received a copy of the GNU General Public License
+#  along with this program; if not, write to the Free Software Foundation,
+#  Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
+#
+# =============================================================================
+# =============================================================================
+#
+#   Author(s): Savin Zlobec 
+#
+# ============================================================================= 
+
+use POSIX;
+
+if ($#ARGV < 0 || $#ARGV > 1)
+{
+    die('Usage: bdf2pwf.pl <FONT.BDF> [LAST_CHAR_CODE]' . "\n\n"); 
+}
+
+$font_name = $ARGV[0];
+$font_name =~ s/\.bdf//;
+
+if (defined($ARGV[1]))
+{
+    $last_char_to_code = $ARGV[1];
+}
+
+# -----------------------------------------------------------------------------
+
+for (my $i = 0; $i < 8; $i++)
+{
+    $bitmask[$i] = 2**(7 - $i);
+}
+
+# -----------------------------------------------------------------------------
+
+$byte_array_idx = 0;
+
+sub print_char_data
+{
+    my $encoding = shift;
+
+    my $bbw      = $char_bbw[$encoding];
+    my $bbh      = $char_bbh[$encoding];
+    my $bbx      = $char_bbx[$encoding];
+    my $bby      = $char_bby[$encoding];
+    my $dwx      = $char_dwx[$encoding];
+    my $byte_idx = $char_offset[$encoding];
+    my $bit_idx  = 0;
+
+    $char_array_offset[$encoding] = $byte_array_idx;
+    
+    my $start_byte_idx = $byte_idx;
+
+    my $line_cnt = 0;
+
+    print("/*\n");
+    print(" * char     = '" . $char_name[$encoding] . "'\n");
+    printf(" * encoding = 0x%02x\n", $encoding);
+    print(" * bounds   = ${bbx} ${bby} ${bbw} ${bbh}\n");
+    print(" * dwidth   = ${dwx}\n");
+    print(' * offset   = ' . $byte_array_idx . " bytes\n");
+
+    print(" * +");
+    for (my $i = 0; $i < $bbw; $i++)
+    {
+        print("-");
+    }
+    print("+\n");
+
+    for (my $i = 0; $i < ($font_ascent - $bby - $bbh); $i++)
+    {
+        print(" * |");
+        for (my $j = 0; $j < $bbw; $j++)
+        {
+            print(" ");
+        }
+        print("|\n");
+        $line_cnt++;
+    }
+
+    for (my $y = 0; $y < $bbh; $y++)
+    {
+        print(" * |");
+        for (my $x = 0; $x < $bbw; $x++)
+        {
+            if (($bits_table[$byte_idx] & $bitmask[$bit_idx]) > 0)
+            {
+                print("#");
+            }
+            else
+            {
+                print(" ");
+            }
+            $bit_idx++;
+            if ($bit_idx == 8)
+            {
+                $bit_idx = 0;
+                $byte_idx++;
+            }
+        }
+        if ($bit_idx != 0)
+        {
+            $bit_idx = 0;
+            $byte_idx++;
+        }
+        print("|\n");
+        $line_cnt++;
+    }
+
+    for (my $i = 0; $i < ($font_descent + $bby); $i++)
+    {
+        print(" * |");
+        for (my $j = 0; $j < $bbw; $j++)
+        {
+            print(" ");
+        }
+        print("|\n");
+        $line_cnt++;
+    }
+
+    print(" * +");
+    for (my $i = 0; $i < $bbw; $i++)
+    {
+        print("-");
+    }
+    print("+\n");
+    print(" */\n");
+
+    if ($line_cnt != ($font_ascent + $font_descent))
+    {
+        die("Internal Error: line cnt for char ${encoding} = ${line_cnt}!!\n");
+    }
+    for (my $i = $start_byte_idx; $i < $byte_idx; $i++)
+    {
+        if ($encoding == $last_char_enc && $i == ($byte_idx - 1))
+        {
+            printf("    0x%02x\n", $bits_table[$i]);
+        }
+        else
+        {
+            printf("    0x%02x,\n", $bits_table[$i]);
+        }
+    }
+    $byte_array_idx += $byte_idx - $start_byte_idx;
+}
+
+# -----------------------------------------------------------------------------
+
+sub print_char_info
+{
+    my $encoding  = shift;
+
+    my $bbw  = $char_bbw[$encoding];
+    my $bbh  = $char_bbh[$encoding];
+    my $bbx  = $char_bbx[$encoding];
+    my $bby  = $char_bby[$encoding];
+    my $dwx  = $char_dwx[$encoding];
+    my $off  = $char_array_offset[$encoding];
+    my $name = $char_name[$encoding];
+
+    print("    {${bbx}, ${bby}, ${bbw}, ${bbh}, ${dwx}, ${off}} /* ${name} */");
+
+    if ($encoding != $last_char_enc)
+    {
+        printf(",\n");
+    }
+    else
+    {
+        printf("\n");
+    }
+}
+
+# -----------------------------------------------------------------------------
+
+sub convert_char_bits
+{
+    my $encoding = shift;
+    my $bbw = shift;
+    my $bbh = shift;
+    my $bbx = shift;
+    my $bby = shift;
+
+    my $w8 = ($bbw + 0x07) >> 3;
+
+#    print("\n\nENCODING CHAR ${encoding} BBX ${bbw} ${bbh} ${bbx} ${bby}\n\n");
+
+    while(<BDF_FILE>)
+    {
+        my $a;
+        my $b;
+        
+        chomp;
+        last if /^ENDCHAR$/;
+       
+        $b = $_; 
+        for (my $j = 1; $j <= $w8; $j++)
+        {
+            $a = substr($b, 0, 2); 
+            $b = substr($b, 2);
+            $bits_table[$byte_idx++] = hex $a;
+        }     
+        
+#        my $hexval = hex $_;
+#        for (my $j = 1; $j <= $w8; $j++)
+#        {
+#            $bits_table[$byte_idx++] = ($hexval >> (($w8 - $j) * 8)) & 0x00FF;
+#        }
+    }
+    $char_bbx[$encoding] = $bbx;
+    $char_bby[$encoding] = $bby;
+    $char_bbw[$encoding] = $bbw;
+    $char_bbh[$encoding] = $bbh;
+    $char_offset[$encoding] = $last_char_end;
+    
+    $last_char_end = $byte_idx;
+}
+
+# -----------------------------------------------------------------------------
+
+sub convert_char 
+{
+    my $startchar = shift;
+
+    my $encoding;
+    my $bbw;
+    my $bbh;
+    my $bbx;
+    my $bby;
+    my $dwx;
+    my $dwy;
+
+    while(<BDF_FILE>)
+    {
+        chomp;
+        if (/^ENCODING (\d+)$/)
+        {
+            $encoding = $1;
+
+            if ($start_char == -1)
+            {
+                $start_char = $1;
+            }
+
+            if (defined($last_char_to_code) && ($encoding > $last_char_to_code))
+            {
+                return 0;
+            }
+        }
+        elsif (/^BBX (\d+) (\d+) (-?\d+) (-?\d+)$/)
+        {
+            ($bbw, $bbh, $bbx, $bby) = ($1, $2, $3, $4);
+        }
+        elsif (/^DWIDTH (\d+) (\d+)$/)
+        {
+            ($dwx, $dwy) = ($1, $2);
+            if ($dwy != 0)
+            {
+                die("Error: dwidth y <> 0 not supported\n\n");
+            }            
+        }
+        elsif (/^BITMAP$/)
+        {
+            if (not (defined($encoding) && defined($bbw) && defined($dwx))) 
+            {
+                die("Error: missing char properites\n\n");
+            }
+            $char_name[$encoding] = $startchar;
+            convert_char_bits($encoding, $bbw, $bbh, $bbx, $bby);
+            $char_dwx[$encoding] = $dwx;
+       
+            if ($last_char_enc < $encoding) { $last_char_enc = $encoding; }
+            return 1;
+        }
+    }
+}
+
+# -----------------------------------------------------------------------------
+
+open(BDF_FILE, '<' . $ARGV[0]) or 
+    die("Error: unable to open BDF file\n\n");
+
+chomp($_ = <BDF_FILE>);
+if (not /^STARTFONT .*$/)
+{
+    die("Error: wrong BDF file start\n\n");
+}
+
+while(<BDF_FILE>)
+{
+    chomp;
+    if (/^FONT (.*)$/)
+    {
+        $font_long_name = $1;
+    }
+    if (/^FONTBOUNDINGBOX (\d+) (\d+) (-?\d+) (-?\d+)$/)
+    {
+        ($fbbw, $fbbh, $fbbx, $fbby) = ($1, $2, $3, $4);
+        $font_width = $1;
+        $font_ascent = $fbbh + $fbby;
+        $font_descent = -$fbby;
+    }
+    last if /^ENDPROPERTIES$/;
+}
+
+if (not (defined($font_width) && 
+         defined($font_ascent) && defined($font_descent)))
+{
+    die("Error: missing font information in header\n\n");
+}
+
+undef($fbbw);
+undef($fbbh);
+undef($fbbx);
+undef($fbby);
+
+chomp($_ = <BDF_FILE>);
+if (not /^CHARS \d+$/)
+{
+    die("Error: file format error (CHARS tag expected got ${_})\n\n"); 
+}
+
+$byte_idx      = 0;
+$last_char_enc = 0;
+$last_char_end = 0;
+$start_char    = -1;
+
+while (<BDF_FILE>)
+{
+    chomp;
+    last if /^ENDFONT$/;
+
+    if (not /^STARTCHAR (.*)$/)
+    {
+        die("Error: file format error (STARTCHAR tag expected got ${_})\n\n"); 
+    }
+    if (convert_char($1) == 0)
+    {
+        last;
+    }
+}
+close(BDF_FILE);
+
+print("\n/*\n");
+print(" * Font name    = ${font_long_name}\n");
+print(" * Font width   = ${font_width}\n");
+print(" * Font ascent  = ${font_ascent}\n");
+print(" * Font descent = ${font_descent}\n");
+print(" */\n\n");
+
+print("static const Pw_Byte ${font_name}_pwf_bits[${last_char_end}] = \n{\n");
+for (my $i = 0; $i <= $last_char_enc; $i++)
+{
+    if (defined($char_offset[$i]))
+    {
+        print_char_data($i);
+    }
+}
+print("};\n\n");
+
+print("static const Pw_FontCharInfo ${font_name}_pwf_info[" .
+      ($last_char_enc + 1) . "] = \n{\n");
+
+for (my $i = 0; $i <= $last_char_enc; $i++)
+{
+    if (defined($char_offset[$i]))
+    {
+        print_char_info($i);
+    }
+    else
+    {
+        print_char_info($start_char);
+    }
+}
+print("};\n\n");
+
+print("static const Pw_Font ${font_name}_pwf_rec = \n{\n");
+print("    ${font_ascent},\n"); 
+print("    ${font_descent},\n"); 
+print("    " . ($last_char_enc + 1) . ",\n");
+print("    (Pw_FontCharInfo* const)${font_name}_pwf_info,\n"); 
+print("    (Pw_Byte* const)${font_name}_pwf_bits\n"); 
+print("};\n\n");
+print("static Pw_Font* ${font_name}_pwf = (Pw_Font* const)&${font_name}_pwf_rec;\n");
+
+exit;
+

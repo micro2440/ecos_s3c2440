@@ -1,0 +1,297 @@
+<!-- {{{ Banner                         -->
+
+<!-- =============================================================== -->
+<!--                                                                 -->
+<!--     nand_flash.sgml                                             -->
+<!--                                                                 -->
+<!--     NAND Flash driver documentation.                            -->
+<!--                                                                 -->
+<!-- =============================================================== -->
+<!-- ####COPYRIGHTBEGIN####                                          -->
+<!--                                                                 -->
+<!-- =============================================================== -->
+<!-- Copyright (C) 2004 eCosCentric Limited                          -->
+<!-- This material may be distributed only subject to the terms      -->
+<!-- and conditions set forth in the Open Publication License, v1.0  -->
+<!-- or later (the latest version is presently available at          -->
+<!-- http://www.opencontent.org/openpub/)                            -->
+<!-- Distribution of the work or derivative of the work in any       -->
+<!-- standard (paper) book form is prohibited unless prior           -->
+<!-- permission obtained from the copyright holder                   -->
+<!-- =============================================================== -->
+<!--                                                                 -->
+<!-- ####COPYRIGHTEND####                                            -->
+<!-- =============================================================== -->
+<!-- #####DESCRIPTIONBEGIN####                                       -->
+<!--                                                                 -->
+<!-- Author(s):   Alexey Shusharin                                   -->
+<!-- Date:        2007/12/10                                         -->
+<!--                                                                 -->
+<!-- ####DESCRIPTIONEND####                                          -->
+<!-- =============================================================== -->
+
+<!-- }}} -->
+
+<PART id="devs-flash-nand"><title>NAND Flash Device Driver</title>
+
+<CHAPTER id="devs-flash-nand-support">
+<TITLE>Generic NAND Flash Device Driver</TITLE>
+
+<SECTION id="devs-flash-nand-support-overview">
+<TITLE>Overview</TITLE>
+
+<PARA>
+Generic NAND Flash driver feature:
+
+<variablelist>
+   <varlistentry>
+       <listitem><para>
+           - 8-bit NAND Flash devices with 256/512 page size support;
+       </para></listitem>
+       
+       <listitem><para>
+           - error checking and correction algorithm support;
+       </para></listitem>
+       
+       <listitem><para>
+           - bad block management support.
+       </para></listitem>
+   </varlistentry>
+</variablelist>
+
+</PARA>
+
+<PARA>
+    This driver is not compatible with Linux NAND Flash driver.
+    So if you use RedBoot to load Linux kernel, you cannot share
+    NAND Flash device with Linux.
+</PARA>
+
+</SECTION>
+
+<SECTION id="devs-flash-nand-support-config">
+<TITLE>Configuration options</TITLE>
+
+<PARA>
+Generic NAND Flash Device Driver has a number of configuration options.
+</PARA>
+
+<SECTION>
+<TITLE>cdl_component CYGPKG_DEVS_FLASH_NAND_ECC</TITLE>
+
+<PARA>
+    NAND devices are subject to data failures that occur during
+    device operation. To ensure data read/write integrity, system
+    error checking and correction (ECC) algorithms should be
+    implemented. This component defines the using of ECC.
+</PARA>
+
+<variablelist>
+   <varlistentry>
+       <term><type>cdl_option CYGSEM_DEVS_FLASH_NAND_ECC_OFF</type></term>
+           <listitem><para>
+               Don't use error checking and correction algorithm.
+           </para></listitem>
+   </varlistentry>
+   <varlistentry>
+       <term><type>cdl_option CYGSEM_DEVS_FLASH_NAND_ECC_SOFT</type></term>
+           <listitem><para>
+               Use software error checking and correction algorithm which is
+               capable of single bit error correction and 2-bit random detection.
+           </para></listitem>
+   </varlistentry>
+</variablelist>
+
+</SECTION>
+
+<SECTION>
+<TITLE>cdl_component CYGPKG_DEVS_FLASH_NAND_BLOCKMANAGE</TITLE>
+
+<PARA>
+    The NAND Flash devices may contain bad blocks, that shouldn't be
+    used. Additional bad blocks may develop during the lifetime
+    of the device. These blocks need to be managed using bad blocks
+    management. This component defines bad block management algorithm.
+</PARA>
+
+<variablelist>
+   <varlistentry>
+       <term><type>cdl_option CYGSEM_DEVS_FLASH_NAND_BBM_INIT</type></term>
+           <listitem><para>
+               Check only manufacturer marked bad blocks. NAND driver will
+               return error if application try to read/write/erase these blocks.
+           </para></listitem>
+   </varlistentry>
+   <varlistentry>
+       <term><type>cdl_component CYGSEM_DEVS_FLASH_NAND_BBM_REPAIR</type></term>
+           <listitem><para>
+               Simple bad block management. NAND driver reserves repair
+               area at the end of the flash and replace bad blocks in main
+               area with blocks from it. New bad blocks will be also replaced.
+               Management information resides in last not bad block.
+           </para></listitem>
+   </varlistentry>
+   <varlistentry>
+       <term><type>cdl_option CYGNUM_DEVS_FLASH_NAND_BBM_REPAIR_SIZE</type></term>
+           <listitem><para>
+               Number of blocks in repair area. Usually it's equal 3%
+               of whole flash.
+           </para></listitem>
+   </varlistentry>
+</variablelist>
+
+</SECTION>
+</SECTION>
+
+<SECTION id="devs-flash-nand-support-platform">
+<TITLE>Platform driver template</TITLE>
+
+<PARA>
+NAND Flash support is specific to a platform. Hence you should create a
+package with platform specific code. This is a template of such package.
+</PARA>
+
+<SECTION>
+<TITLE>Configuration file</TITLE>
+
+<PROGRAMLISTING> 
+cdl_package CYGPKG_DEVS_FLASH_YOUR_PLATFORM {
+    display       "YOUR PLATFORM NAND FLASH memory support"
+    description   "NAND FLASH memory device support for ..."
+
+    include_dir   cyg/io
+
+    parent        CYGPKG_IO_FLASH
+    active_if     CYGPKG_IO_FLASH
+
+	define_proc {
+        puts $::cdl_system_header "#define CYGDAT_DEVS_FLASH_NAND_PLF_INL &lt;cyg/io/devs_flash_your_platform.inl&gt;"
+    }
+
+    cdl_interface CYGINT_DEVS_FLASH_NAND_REQUIRED {
+        display   "NAND FLASH driver required"
+    }
+
+    implements    CYGINT_DEVS_FLASH_NAND_REQUIRED
+    implements    CYGHWR_IO_FLASH_DEVICE
+}
+</PROGRAMLISTING>
+
+</SECTION>
+
+
+<SECTION>
+<TITLE>Source code file</TITLE>
+
+<PROGRAMLISTING> 
+#include &lt;cyg/hal/your_platform_misc.h&gt;
+
+//--------------------------------------------------------------------------
+// Platform specific access to control-lines
+//--------------------------------------------------------------------------
+
+#define CYGHWR_FLASH_NAND_PLF_INIT      nand_plf_init
+#define CYGHWR_FLASH_NAND_PLF_CE        nand_plf_ce
+#define CYGHWR_FLASH_NAND_PLF_WP        nand_plf_wp
+#define CYGHWR_FLASH_NAND_PLF_CMD       nand_plf_cmd
+#define CYGHWR_FLASH_NAND_PLF_ADDR      nand_plf_addr
+#define CYGHWR_FLASH_NAND_PLF_WAIT      nand_plf_wait
+
+//--------------------------------------------------------------------------
+// Global variables
+//--------------------------------------------------------------------------
+
+// The device-specific data
+static cyg_nand_dev nand_device = 
+{
+    .flash_base         = (void*) YOUR_PLATFORM_FLASHBASE,
+    .addr_r             = (void*) YOUR_PLATFORM_DATABASE,
+    .addr_w             = (void*) YOUR_PLATFORM_DATABASE,
+    
+    .delay_cmd          = 1,
+    .delay_rst          = 500,
+};
+
+//--------------------------------------------------------------------------
+// Init platform nand
+//--------------------------------------------------------------------------
+
+static inline void nand_plf_init(void)
+{
+    // Init NAND Flash platform stuff
+}
+
+//--------------------------------------------------------------------------
+// Enable/disable nand chip
+//--------------------------------------------------------------------------
+
+static inline void nand_plf_ce(int state)
+{
+    if(state)
+    {
+        // Enable CE line
+    }
+    else
+    {
+        // Disable CE line
+    }
+}
+
+//--------------------------------------------------------------------------
+// Enable/disable write protect
+//--------------------------------------------------------------------------
+
+static inline void nand_plf_wp(int nowrite)
+{
+    if(nowrite)
+    {
+        // Enable WP
+    }
+    else
+    {
+        // Disable WP
+    }
+}
+
+//--------------------------------------------------------------------------
+// Write nand command
+//--------------------------------------------------------------------------
+
+static inline void nand_plf_cmd(int cmd)
+{
+    // Enable CLE line
+    // Write command
+    // Disable CLE line
+}
+
+//--------------------------------------------------------------------------
+// Write nand address
+//--------------------------------------------------------------------------
+
+static inline void nand_plf_addr(int addr)
+{
+    // Enable ALE line
+    // Write address
+    // Disable ALE line
+}
+
+//--------------------------------------------------------------------------
+// Wait device ready pin
+//--------------------------------------------------------------------------
+
+static inline void nand_plf_wait(void)
+{
+    // Wait while device is not ready
+}
+
+//--------------------------------------------------------------------------
+</PROGRAMLISTING>
+
+</SECTION>
+
+
+</SECTION>
+
+</CHAPTER>
+
+</PART>

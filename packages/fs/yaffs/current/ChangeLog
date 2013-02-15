@@ -1,0 +1,106 @@
+2009-12-01  Ross Younger  <wry@ecoscentric.com>
+
+	* ecos-yaffs.c: Interface tweaks to allow this this package
+	to be easily used with eCosPro.
+	* yaffs.cdl: Create CYGSEM_FS_YAFFS_COMPATIBILITY_ECOSPRO switch
+	for the above, default off (i.e. for anoncvs).
+
+2009-11-19  Ross Younger  <wry@ecoscentric.com>
+
+	* ecos-yaffs.c, ecos-yaffs-nand.c: Update to NAND interface v2.
+	* yaffs.cdl: Require CYGSEM_IO_NAND_APPINTERFACE_VERSION > 1.
+	Declare CYGSEM_FS_YAFFS_NAND_APPINTERFACE to satisfy the two-way check.
+
+2009-11-17  Ross Younger  <wry@ecoscentric.com>
+
+	* yaffs_guts.c: Tweak last upstream merge. Be noisy if
+	we ran out of memory during mount.
+
+2009-11-13  Ross Younger  <wry@ecoscentric.com>
+
+	* tests: yaffs1-6 NA unless CYGPKG_KERNEL is present.
+	* Update upstream: (pulled up to 2009-11-11 02:11:13 +0000)
+	- mostly bugfixes
+
+2009-11-09  Ross Younger  <wry@ecoscentric.com>
+
+	* ecos-yaffs-nand.c: Update for changes to NAND interface.
+
+2009-11-03  Ross Younger  <wry@ecoscentric.com>
+
+	* tests: Import from eCosPro: mounttime, yaffs1, yaffs2,
+	yaffs4, yaffs5, yaffs6. Patch for codebase differences.
+
+2009-11-02  Ross Younger  <wry@ecoscentric.com>
+
+	* Update to latest snapshot from Aleph One CVS (mostly
+	tidyups): last upstream change is dated "2009-10-30 02:32:32 +0000"
+
+2009-10-29  Ross Younger  <wry@ecoscentric.com>
+
+	* yaffs_guts.c: Fix low-memory assert bug.
+
+2009-10-09  Ross Younger  <wry@ecoscentric.com>
+
+	* tests/fops.c: Don't make unreasonable use of stack.
+	* Update for latest upstream snapshot (yaffs_FlushFile)
+
+2009-09-24  Ross Younger  <wry@ecoscentric.com>
+
+	* doc/yaffs.sgml: Various fixups.
+	* ecos-yaffs-nand.h, ecos-yaffs.c, yaffs_guts.c: Build fixes for
+	older gcc
+
+2009-09-16  Ross Younger  <wry@ecoscentric.com>
+
+	* ecos-yaffs-nand.c: Correctly use ECC on YAFFS tags in yaffs2
+	filesystems when not in inbandTags mode (ref: 1000821)
+	* ecos-yaffs.c: Improve spare area size sanity checking on mount
+	* yaffs_packedtags2.c: Add framework (usually conditioned out)
+	to count ECC corrections within the spare area.
+
+2009-08-28  Ross Younger  <wry@ecoscentric.com>
+
+	* doc/yaffs.sgml: Bring explanations of CDL options up-to-date.
+	* yaffs.cdl: Add CYGNUM_FS_YAFFS_TEMP_BUFFERS tuning parameter.
+
+2009-08-26  Ross Younger  <wry@ecoscentric.com>
+
+	* Added support for small-page chips: incorporates and builds on work
+	by Simon Kallweit.  Small page devices can operate either in YAFFS1
+	mode, or YAFFS2 mode with inbandTags. 
+	* Updated #defines to omit unneeded YAFFS code.
+
+2009-08-18  Ross Younger  <wry@ecoscentric.com>
+
+	* yaffs-guts.c: Update from Aleph One CVS (1.85 -> 1.88)
+
+2009-07-20  Ross Younger  <wry@ecoscentric.com>
+
+	* ecos-yaffs.c: Compute free-space from nErasedBlocks (recommended by
+	Charles Manning) - not yaffs_GetNumberOfFreeChunks.
+
+2009-07-03 Ross Younger  <wry@eCosCentric.com>
+
+	* Add detailed RAM use estimate and worked example.
+
+2009-06-18 Ross Younger  <wry@eCosCentric.com>
+
+	* General enhancements and bugfixes.
+	* Add mount-time mallinfo check/warning in debug builds.
+	* Replace unconditional diag_printfs with calls to TOUT macro.
+	* TOUT (trace output) macro now uses configable cdl function,
+	  may be disabled.
+	* Improve our definition of YBUG.
+	* Upstream: Merge from cvs datestamp "2009-05-16 00:00"
+	* Retab eCos-specific files, for consistency.
+	* Pare down use of libextras.
+	* doc: linewrap for consistency.
+	* Elide unneeded YAFFS1 code.
+	* Use eCos qsort, not yaffs's own.
+
+2009-05-01 Ross Younger  <wry@eCosCentric.com>
+
+	* New package. YAFFS filesystem. Beware license terms; this
+	package is not covered by the standard eCos license!
+

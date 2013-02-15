@@ -1,0 +1,1299 @@
+
+<!-- {{{ Banner                         -->
+
+<!-- =============================================================== -->
+<!--                                                                 -->
+<!--     nand.sgml                                                   -->
+<!--                                                                 -->
+<!--     Documentation for the eCos NAND flash access library.       -->
+<!--                                                                 -->
+<!-- =============================================================== -->
+<!-- ####ECOSDOCCOPYRIGHTBEGIN####                                   -->
+<!-- =============================================================== -->
+<!-- Copyright (C) 2009 eCosCentric Ltd.                             -->
+<!-- This material may be distributed only subject to the terms      -->
+<!-- and conditions set forth in the Open Publication License, v1.0  -->
+<!-- or later (the latest version is presently available at          -->
+<!-- http://www.opencontent.org/openpub/)                            -->
+<!-- Distribution of the work or derivative of the work in any       -->
+<!-- standard (paper) book form is prohibited unless prior           -->
+<!-- permission obtained from the copyright holder                   -->
+<!-- =============================================================== -->
+<!-- ####ECOSDOCCOPYRIGHTEND####                                     -->
+<!-- =============================================================== -->
+<!-- #####DESCRIPTIONBEGIN####                                       -->
+<!--                                                                 -->
+<!-- Author(s):   wry                                                -->
+<!-- Date:        2009/04/17                                         -->
+<!--                                                                 -->
+<!-- ####DESCRIPTIONEND####                                          -->
+<!-- =============================================================== -->
+
+<!-- }}} -->
+
+<part id="io-nand-overview">
+<title>The eCos NAND Flash Library</title>
+<titleabbrev id="io-nand-short">eCos NAND Flash Library</titleabbrev>
+
+<chapter id="nand-overview-c">
+<title>NAND Library Overview</title>
+
+<sect1 id="nand-overview1"><title>Description</title>
+<para>This is a library which allows NAND flash devices to be accessed
+by the eCos kernel and applications.  It is analogous to the eCos FLASH
+library, but for NAND devices. It exists as a separate library because of
+the fundamental differences between the two types of flash memory.</para>
+
+<para>This library provides the following functionality:
+<itemizedlist>
+<listitem><para>Interrogation to confirm that the expected device is
+present</para></listitem>
+<listitem><para>Reading from and writing to flash pages</para></listitem>
+<listitem><para>Erasing flash blocks</para></listitem>
+<listitem><para>The ability to divide a single device into multiple
+partitions, like those of a hard drive</para></listitem>
+<listitem><para>Creation and maintenance of a Bad Block Table</para></listitem>
+<listitem><para>Use of an Error Correcting Code to detect and correct
+single-bit errors, and to detect multiple-bit errors</para></listitem>
+<listitem><para>Packing of the ECC and application out-of-band data into
+the spare area on the device</para></listitem>
+</itemizedlist>
+<note><para>The spare area, ECC and bad block table have been
+deliberately created with the intention of compatibility with
+current versions of the Linux MTD layer. For example, this would
+allow a single NAND device to be accessed by RedBoot to load a Linux
+kernel, which could then go on to use another partition as its root
+filesystem.</para></note> </para> <tip><para>This library is also used
+as glue to allow appropriate filesystems to use NAND devices. This
+allows more useful higher-level access by applications and RedBoot via
+the File I/O and POSIX interfaces. In other words, your application
+may not need to invoke this library directly, though of course you
+may still have to write a driver for your chip and/or board.
+</para></tip>
+
+<sect2 id="nand-lib-structure"><title>Structure of the library</title>
+<para>This library has two principal interfaces: one for
+<emphasis>applications</emphasis> to call into it, and another to call
+out to the chip-specific <emphasis>drivers</emphasis>.  (The chip drivers
+themselves then require support from the relevant platform HAL to allow
+them to access the physical chip in an appropriate manner for the board -
+such as the memory-mapped I/O range to use.)</para>
+
+<para>The following diagram illustrates the calls from two applications
+all the way to an underlying NAND device. Application 1 uses the NAND
+library directly, whereas application 2 is using a filesystem and the
+eCos File I/O layer.</para>
+
+<mediaobject>
+<imageobject>
+<imagedata fileref="nandlib-layout.png" align=center scalefit=1 depth=600>
+</imageobject>
+<textobject>
+<phrase>Library layout diagram</phrase>
+</textobject>
+</mediaobject>
+
+</sect2>
+<sect2 id="nand-lib-devsupport"><title>Device support</title>
+<para>Before this library can be used on a given board, an appropriate
+device driver must be created. Each driver is for a particular NAND
+part or family of parts; the HAL for each board then instantiates the
+relevant driver(s) appropriately with board-specific glue such as the
+memory-mapped I/O range to use. Full details on creating a driver are
+presented in <xref linkend="nand-devs-writing">.</para>
+
+<para>There is also a <xref linkend="devs-nand-synth"> for testing purposes,
+which is present on the <emphasis>synth</emphasis> target.
+</para>
+</sect2>
+</sect1>
+<SECT1 id="nand-danger">
+<TITLE>Danger, Will Robinson! Danger!</TITLE>
+
+<PARA>Unlike nearly every other aspect of embedded system programming,
+getting it wrong with FLASH devices can render your target system
+useless. Most targets have a boot loader in the FLASH. Without this
+boot loader the target will obviously not boot. So before starting to
+play with this library its worth investigating a few things. How do
+you recover your target if you delete the boot loader? Do you have the
+necessary JTAG cable? Or is specialist hardware needed? Is it even
+possible to recover the target boards or must it be thrown into the
+rubbish bin? How does killing the board affect your project schedule?
+</PARA>
+
+</SECT1>
+
+
+<sect1 id="nand-nor-diff"><title>Differences between NAND and NOR flash</title>
+<para>Most flash devices supported by the eCos Flash library are
+categorised as NOR flash. These are fundamentally different from NAND
+flash devices, both in terms of the storage cells deep within the chip,
+and how they are addressed and used by applications.</para>
+
+<informaltable frame=topbot pgwide=1>
+<tgroup cols=3>
+<colspec colname=what>
+<colspec colname=nor>
+<colspec colname=nand>
+<thead> <row>
+<entry> Attribute </entry>
+<entry> NOR </entry>
+<entry> NAND </entry>
+</row> </thead>
+<tbody>
+<row>
+<entry>Addressing of data</entry>
+<entry>By byte address within the device. Usually expressed as
+memory-mapped addresses.</entry>
+<entry>By row (page) number. Pages are a power of two; commonly 512 or
+2048 bytes. Optimised for reading and writing a page at a time. Sometimes
+supports column (byte) addressing, but this library does not expose
+such functionality.</entry>
+</row>
+<row>
+<entry>Are direct reads and writes possible? <footnote><para>In
+other words, can the application read flash directly as if it
+was RAM, or does it have to invoke the driver to copy data in and
+out?</para></footnote></entry>
+<entry>Usually</entry>
+<entry>Not in general, though a few special-case exceptions exist such
+as OneNAND devices.</entry>
+</row>
+<row>
+<entry>Erase block size</entry>
+<entry>May vary across the chip</entry>
+<entry>A fixed number of pages, typically 64</entry>
+</row>
+<row>
+<entry>Out-of-band data </entry>
+<entry>Not supported </entry>
+<entry>A small number of bytes per page - typically 16 "spare" per 512
+"data" bytes - are usable by the application. They are read, written
+and erased at the same time as the "real" page data. </entry>
+</row>
+<row>
+<entry>May factory-bad regions <footnote><para>Regions which were found
+during manufacture to be bad and marked in some way - usually by placing
+a special code in the Out Of Band area.</para></footnote> exist on the
+chip?</entry>
+<entry>No </entry>
+<entry>Typically up to 20 eraseblocks are marked as factory-bad in
+their OOB area. The OS is expected to scan these to create a Bad Block
+Table. <footnote><para>Once a BBT exists it can then be used to keep
+track of any blocks which fail through wear during the lifetime of the
+device.</para></footnote></entry>
+</row>
+<row>
+<entry>May data be rewritten without being erased first?</entry>
+<entry>Usually (but only by resetting 1-bits to 0) </entry>
+<entry>Usually, on SLC NAND chips; not on MLC chips.</entry>
+</row>
+<row>
+<entry>Error detection and correction</entry>
+<entry>Not present</entry>
+<entry>Usually automatic. Typically this involves an Error Correcting
+Code, automatically calculated and stored in the OOB area, then checked
+on read.
+</entry>
+</row>
+</tbody>
+</tgroup>
+</informaltable>
+
+<para> Since a NAND chip can in general only be read indirectly, its
+contents must be copied to RAM before they can be executed. This means
+that the caveats in the eCos FLASH library about disabling interrupts
+whilst programming do not apply here, except in special cases such as
+OneNAND devices.</para>
+</sect1>
+
+<sect1 id="nand-deployment-notes"><title>Preparing for deployment</title>
+<para>
+It is generally not recommended to hard-code physical on-NAND locations
+in case of factory bad blocks or block failures in the field.
+<footnote><para>Usually the first block is guaranteed to be defect free
+for a certain number of erase cycles. This tends to be necessary if
+bootstrapping the CPU off NAND, and is an obvious exception to this
+rule.</para></footnote> Instead it is preferable to set up 
+<emphasis>partitions</emphasis> on the chip with a generous safety 
+margin and to store data in a location-independent way. This is
+commonly achieved by placing logical tags in the spare area of each
+page, or using a log-structured filesystem such as YAFFS. Such
+strategies remove the dependence on physical addressing, at the cost of
+increased complexity.</para>
+
+<para>The upshot of this is that you cannot reliably create a simple
+binary image to bulk-program in the factory. A more complicated
+programming operation is required to take account of your chip
+partitions, logical addressing strategy and any bad blocks which 
+may be encountered during write.
+</para>
+</sect1>
+
+</chapter>
+
+<chapter id="nand-using">
+<title>Using the NAND library</title>
+
+<para>The eCos NAND library exposes two principal APIs: one for
+applications to use and the other to communicate with
+device drivers.</para>
+
+<sect1 id="nand-app-config"><title>Configuring the NAND library</title>
+<para>The following configuration options are provided. They affect the
+library globally, i.e. across all drivers.</para>
+
+<variablelist>
+<varlistentry><term><constant>CYGPKG_IO_NAND_CFLAGS_ADD</constant></term>
+<term><constant>CYGPKG_IO_NAND_CFLAGS_REMOVE</constant></term>
+<listitem><para> Allows specific build options to be added to or
+removed from the CFLAGS list when building this library.</para></listitem></varlistentry>
+<varlistentry><term><constant>CYGSEM_IO_NAND_DEBUG</constant></term>
+<listitem><para>
+This is the master switch for all debug reporting from the library.</para></listitem></varlistentry>
+<varlistentry><term><constant>CYGSEM_IO_NAND_DEBUG_FN_DEFAULT</constant></term>
+<listitem><para>
+This is the default function that the library will use when sending
+debugging output. It must behave like <function>printf</function>.
+The default - <function>cyg_nand_defaultprintf</function>
+- is a wrapper to <function>diag_printf</function>.</para>
+<note><para>Individual drivers may override this setting in their
+<function>devinit</function> routines by overwriting the pointer in
+the device struct.</para></note></listitem></varlistentry>
+<varlistentry><term><constant>CYGSEM_IO_NAND_DEBUG_LEVEL</constant></term>
+<listitem><para>
+Specifies the verbosity of the NAND library and device drivers. 
+Ranges from 0 (off) to 9 (incredibly verbose); the default setting is 1.
+(Higher values are only likely to be of use during driver development,
+if ever.)
+When enabled, messages are printed using the per-device printf-like
+function (see above).</para>
+<note><para>Should a serious problem be encountered it will always
+be reported the printf-like function, regardless of this
+setting. Such messages may be suppressed altogether by turning
+off <constant>CYGSEM_IO_NAND_DEBUG</constant>.</para></note></listitem></varlistentry>
+<varlistentry><term><constant>CYGSEM_IO_NAND_READONLY</constant></term>
+<listitem><para>Globally disables all code which writes to NAND devices.
+This may be useful during driver development.</para></listitem></varlistentry>
+<varlistentry><term><constant>CYGNUM_NAND_MAX_PARTITIONS</constant></term>
+<listitem><para>Sets a compile-time limit on the number of partitions 
+any NAND device may have. The default is 4, which should be enough for
+most purposes; unnecessarily setting this higher wastes RAM.</para></listitem></varlistentry>
+<varlistentry><term><constant>CYGSEM_IO_NAND_USE_BBT</constant></term>
+<listitem><para>Globally enables and disables the use of Bad Block Table.
+ <warning><para>This setting should not be disabled lightly!
+ It is strongly recommended that you leave this setting enabled unless
+ you have a very good reason to not use it. It is provided really as a 
+ convenience for allowing developers to recover their NAND from a
+ confused state.  </para></warning>
+</para></listitem></varlistentry>
+</variablelist>
+</sect1>
+
+<sect1 id="nand-using-app-api"><title>The NAND Application API</title>
+<para>All of the functions described here are declared in the header file
+<filename>&lt;cyg/nand/nand.h&gt;</filename>, which should be included
+by all users of the NAND library.</para>
+
+<note><para> Most of the functions in the library are declared
+as returning <type>int</type>. <emphasis>Unless otherwise stated,
+all functions return 0 for success, or a negative eCos error code if
+something went wrong.</emphasis></para></note>
+
+<sect2 id="nand-app-lookup"><title>Device initialisation and lookup</title>
+<para>NAND devices are identified to the library by name. In many cases
+there will be only one, commonly named <emphasis>onboard</emphasis>,
+but this flexibility allows for easy expansion later without cross-device
+confusion.</para>
+<note><para>The naming of NAND devices is set up by the code that
+instantiates their drivers. Normally this is done by the platform HAL
+port.</para></note>
+
+<programlisting> __externC int cyg_nand_lookup(const char *devname, cyg_nand_device **dev_o);</programlisting>
+<para>On success, *dev_o will be set up to point to a
+<type>cyg_nand_device</type> struct. On failure, it will not; a return
+code of <constant>-ENOENT</constant> signifies that the requested device
+name was not found.</para>
+
+<para>
+Applications will hardly, if ever, need to access the
+<type>cyg_nand_device</type> structs directly. The following members
+and convenience macros are most likely to be of relevance:
+<programlisting>
+struct _cyg_nand_device_t {
+...
+cyg_nand_printf pf; // Diagnostic printf-like function for this device to use. May be changed at runtime.
+...
+size_t page_bits; // log2 of no of regular bytes per page
+size_t spare_per_page; // OOB area size in bytes
+size_t block_page_bits; // log2 of no of pages per eraseblock
+size_t blockcount_bits; // log2 of number of blocks
+size_t chipsize_log; // log2 of total chip size in BYTES.
+...
+};
+
+#define CYG_NAND_BYTES_PER_PAGE(dev) (1&lt;&lt;(dev)->page_bits)
+#define CYG_NAND_SPARE_PER_PAGE(dev) ((dev)->spare_per_page)
+#define CYG_NAND_PAGES_PER_BLOCK(dev) (1&lt;&lt;(dev)->block_page_bits)
+#define CYG_NAND_BLOCKCOUNT(dev) (1&lt;&lt;(dev)->blockcount_bits)
+#define CYG_NAND_PAGECOUNT(dev) (NAND_BLOCKCOUNT(dev) * NAND_PAGES_PER_BLOCK(dev))
+#define CYG_NAND_CHIPSIZE(dev) (1&lt;&lt;(dev)->chipsize_log)
+#define CYG_NAND_APPSPARE_PER_PAGE(dev) ((dev)->oob->app_size)
+
+</programlisting>
+</para>
+</sect2>
+
+<sect2 id="nand-app-addressing"><title>NAND device addressing</title>
+<para>NAND devices are arranged as a series of <emphasis>pages</emphasis>
+and <emphasis>eraseblocks</emphasis>. The eCos NAND library numbers
+pages and eraseblocks sequentially, both starting at 0 and continuing
+until the end of the chip. For example, eraseblock 0 might contain pages
+0 through 63; eraseblock 1, pages 64 through 127; and so on.</para>
+<caution><para>This numbering scheme is independent of the device's
+addressing scheme. Take care, particularly when erasing blocks; some
+devices and some applications effectively express the location to erase as
+a page number (or, in NAND-speak, as the <emphasis>row address</emphasis>
+to erase from).</para></caution>
+
+<warning><para>Most NAND chip manufacturers document restrictions on
+the order in which pages may be written to their device. Typically,
+individual pages within an eraseblock must be written in sequential
+order starting from the first, and random-order writes are prohibited
+or unspecified. The eCos NAND library does not attempt to police such
+restrictions; if at all unsure, check the spec sheet for the part. You
+have been warned! </para></warning>
+
+<para>NAND devices are widely considered to be arranged as one or
+more <emphasis>partitions</emphasis>, and the eCos NAND library
+supports this. However, there is no universal scheme for partition
+sizes to be supplied to the driver, unlike hard drives which encode
+a partition table into their first sector. Partition arrangements are
+often implicitly hardcoded, such as by byte address within the device,
+though they could be encoded in a "partition table", user-set, or even
+variable under software control by some esoteric rules. Therefore, every
+device driver is responsible for configuring its partition information
+as appropriate for the device, and this might for example appear as CDL
+options.</para>
+<tip><para>Be sure to read the notes associated with the device driver
+to understand how partitions are set up; if no notes are provided,
+look in its <function>devinit</function> code.</para></tip>
+
+<sect3 id="nand-app-partitions"><title>NAND device partitions</title>
+<para>After a NAND device has been initialised, its device struct contains
+a list of partitions. These are numbered from 0 and may go up to
+<constant>CYGNUM_NAND_MAX_PARTITIONS</constant>-1. Before an
+application can use the NAND device, it must obtain a partition
+context (pointer) with the following call:
+<programlisting>__externC cyg_nand_partition* cyg_nand_get_partition(cyg_nand_device *dev, unsigned partno);</programlisting>
+</para>
+
+<note><para>This call returns a pointer to the partition struct, not
+an error code. If the given partition number is inactive or invalid,
+it returns NULL.</para></note>
+</sect3>
+
+<sect3 id="nand-app-addressing-spare"><title>About the spare area</title>
+<para>Every page on the NAND array has a small number of "spare" bytes
+associated with it.  These are used by the NAND library to store the
+page's ECC; whatever is left over may be used by the application for
+whatever purposes may suit it.</para>
+
+<para>Every page has <function>CYG_NAND_APPSPARE_PER_PAGE(dev)</function>
+bytes of spare area available to the application. (This amount is implicit
+from the driver configuration and cannot change during the lifetime of
+a device.)  </para>
+
+<note><para>Application spare bytes are not subject to the ECC. When
+reading the spare area data, you must be prepared to cope with the
+consequences of the (unlikely) event of a bit drop-out or other
+failure.</para></note> </sect3>
+
+</sect2>
+
+<sect2 id="nand-app-manipulating"><title>Manipulating the NAND array</title>
+<para>Now, finally, given a <type>cyg_nand_partition*</type>,
+your application can make use of the NAND array with the following
+functions:</para>
+
+<sect3 id="nand-app-read"><title>Reading data</title>
+<programlisting>
+__externC int cyg_nand_read_page(cyg_nand_partition *ctx, cyg_nand_page_addr page, void * dest, size_t size, void * spare, size_t spare_size);
+</programlisting>
+
+<blockquote>
+<para>Reads a single page and its spare area. The data read from the chip
+will be automatically ECC-checked and repaired if necessary. Parameters
+are as follows:</para>
+
+<glosslist>
+<glossentry><glossterm><parameter>ctx</parameter></glossterm><glossdef><para>The
+partition that data is to be read from.</para></glossdef></glossentry>
+<glossentry><glossterm><parameter>page</parameter></glossterm><glossdef><para>
+The page to be read, <emphasis>numbered from the start of the partition.
+</emphasis>. As a double-check, the library will refuse the
+operation with <constant>-ENOENT</constant> if this address is not within
+partition <parameter>ctx</parameter>.
+    <note><para>This was changed in application interface v2; earlier page
+    and block addresses were device-relative.</para></note>
+</para></glossdef></glossentry>
+<glossentry><glossterm><parameter>dest</parameter></glossterm><glossdef><para>
+Where to put the data. May be NULL, in which case the page data is not
+read.</para></glossdef></glossentry>
+<glossentry><glossterm><parameter>size</parameter></glossterm><glossdef><para>
+The maximum amount of data to read. (In any event, no more than a single
+page will be read, but if your application knows it doesn't need the
+whole page, you can place a cap here.) </para></glossdef></glossentry>
+<glossentry><glossterm><parameter>spare</parameter></glossterm><glossdef><para>
+Where to store the application data read from the spare area. This may
+be NULL if spare data is not required.</para></glossdef></glossentry>
+<glossentry><glossterm><parameter>spare_size</parameter></glossterm><glossdef><para>
+The maximum number of bytes to read from the spare area. This will
+not be more than <function>CYG_NAND_APPSPARE_PER_PAGE(dev)</function>
+bytes.</para></glossdef></glossentry>
+</glosslist>
+
+<para>An error response of <constant>-EIO</constant> means that a
+multiple-bit I/O error has occurred in the page data, which the ECC
+could not repair. The library stores the data read from the device in
+<parameter>*dest</parameter> and <parameter>*spare</parameter> on a
+best-effort basis; it should not be relied upon. The application should
+take steps to salvage what it can and erase the block as soon as possible.</para>
+
+</blockquote>
+</sect3>
+
+<sect3 id="nand-app-writing"><title>Writing data</title>
+<programlisting>
+__externC int cyg_nand_write_page(cyg_nand_partition *ctx, cyg_nand_page_addr page, const void * src, size_t size, const void * spare, size_t spare_size);
+</programlisting>
+
+<blockquote>
+<para>Writes a single page and its spare area. The ECC will be computed
+and stored automatically.  Parameters are as follows:</para>
+
+<glosslist>
+<glossentry><glossterm><parameter>ctx</parameter></glossterm><glossdef><para>The
+partition that data is to be written to.</para></glossdef></glossentry>
+<glossentry><glossterm><parameter>page</parameter></glossterm><glossdef><para>
+The page to be written, <emphasis>numbered from the start of
+the partition</emphasis>. As a double-check, the
+library will refuse the operation with <constant>-ENOENT</constant>
+if this address is not within partition <parameter>ctx</parameter>.
+</para></glossdef></glossentry>
+<glossentry><glossterm><parameter>src</parameter></glossterm><glossdef><para>
+Where to read the data from. May be NULL, in which case the page data
+is not written.</para></glossdef></glossentry>
+<glossentry><glossterm><parameter>size</parameter></glossterm><glossdef><para>
+The amount of data to write. (In any event, no more than a single page
+will be written.)</para></glossdef></glossentry>
+<glossentry><glossterm><parameter>spare</parameter></glossterm><glossdef><para>
+Where to read the data to go into the spare area; it will automatically
+be packed around the ECC as necessary. Again, this may be NULL if spare
+data is not required.</para></glossdef></glossentry>
+<glossentry><glossterm><parameter>spare_size</parameter></glossterm><glossdef><para>
+The number of bytes to write to the spare area. This should not be
+larger than <function>CYG_NAND_APPSPARE_PER_PAGE(dev)</function>; if it is,
+only that many bytes will be stored.</para></glossdef></glossentry>
+</glosslist>
+
+<para> An error response of <constant>-EIO</constant> means that
+the page write failed. The application should copy out any data
+it wishes to keep from the rest of the eraseblock, then call
+<function>cyg_nand_bbt_markbad()</function> to put the block beyond use.</para>
+</blockquote></sect3>
+
+<sect3 id="nand-app-erasing"><title>Erasing blocks</title>
+
+<programlisting>
+__externC int cyg_nand_erase_block(cyg_nand_partition *ctx, cyg_nand_block_addr blk);
+</programlisting>
+
+<blockquote><glosslist>
+<glossentry><glossterm><parameter>ctx</parameter></glossterm><glossdef><para>The
+partition that data is to be erased from.</para></glossdef></glossentry>
+<glossentry><glossterm><parameter>blk</parameter></glossterm><glossdef><para>
+The block to be erased, <emphasis>numbered from the start of
+the partition</emphasis>. As a double-check, the
+library will refuse the operation with <constant>-ENOENT</constant>
+if this address is not within partition <parameter>ctx</parameter>.
+</para></glossdef></glossentry>
+</glosslist>
+
+<para>An error response of <constant>-EIO</constant> means that the
+block erase failed. In this case, the library automatically marks the
+block as bad, and the application need take no further action.</para>
+
+</blockquote>
+</sect3>
+
+<sect3 id="nand-app-manip-commonerrs"><title>Common error returns</title>
+<para> The following common error returns may be encountered when
+manipulating the NAND array using the above functions:</para>
+
+<glosslist>
+<glossentry><glossterm><constant>-EIO</constant></glossterm><glossdef><para>
+The operation could not be completed due to an I/O error. This may require
+the application to take further action; check the details provided above
+for the call you have just made.</para></glossdef></glossentry>
+<glossentry><glossterm><constant>-ENOENT</constant></glossterm><glossdef><para>
+The page or block address was not valid for the given
+partition.</para></glossdef></glossentry>
+<glossentry><glossterm><constant>-EINVAL</constant></glossterm><glossdef><para>
+The page (block) address was (within) a block that is marked
+bad.</para></glossdef></glossentry>
+</glosslist>
+</sect3>
+</sect2>
+
+<sect2 id="nand-app-ancillary"><title>Ancillary NAND functions</title>
+<para>The following functions are provided to allow applications to interact
+with the Bad Block Table:</para>
+
+<programlisting>
+typedef enum {
+CYG_NAND_BBT_OK=0,
+CYG_NAND_BBT_WORNBAD=1,
+CYG_NAND_BBT_RESERVED=2,
+CYG_NAND_BBT_FACTORY_BAD=3
+} cyg_nand_bbt_status_t;
+
+__externC int cyg_nand_bbt_query(cyg_nand_partition *ctx, cyg_nand_block_addr blk);
+
+__externC int cyg_nand_bbt_markbad(cyg_nand_partition *ctx, cyg_nand_block_addr blk);
+</programlisting>
+
+<para>To determine the status of an eraseblock, use
+<function>cyg_nand_bbt_query</function>; this returns an enum from
+<type>cyg_nand_bbt_status_t</type> or a negative eCos error code. All
+blocks which return a non-0 enum value are considered inaccessible by
+applications.</para>
+
+<para>Occasionally, it is necessary for applications to mark a block
+as bad. This most commonly happens when a write operation fails
+(see <xref linkend="nand-app-writing"> above). To do this, call
+<function>cyg_nand_bbt_markbad</function>; the return is 0 for success,
+or a negative eCos error code. <emphasis>As with other calls, blocks
+are numbered from 0 at the start of the partition, and internally
+translated for the device as appropriate.</emphasis></para>
+
+<para>Both of these calls may foreseeably return
+<constant>-ENOENT</constant> if the given block address was not valid,
+or <constant>-EIO</constant> if something awful happened with the on-chip
+bad block table.
+</para>
+</sect2>
+</sect1>
+
+</chapter>
+
+<chapter id="nand-devs-writing">
+<title>Writing NAND device drivers</title>
+<sect1 id="nand-devs-planning"><title>Planning a port</title>
+
+<para> Before you start, you will need to have sight of appropriate spec
+sheets for both the NAND chip and the board into which it is connected,
+and you need to know how the chip is to be partitioned.</para>
+
+<sect2 id="nand-devs-structure"><title>Driver structure and layout</title>
+<para>
+A typical NAND device driver falls into two parts:</para>
+<itemizedlist>
+<listitem><para>high-level operations specific to the NAND chip (page
+reads and writes); and
+</para></listitem>
+<listitem><para>board-specific plumbing (sending commands and data to
+the chip; reading data back from the chip).
+</para></listitem>
+</itemizedlist>
+
+<para> This distinction is important in the interests of code reuse;
+the same part may appear on different boards, or indeed multiple times,
+but connected differently. It need not be maintained if there are good
+reasons not to.</para>
+
+<para> The <emphasis>NAND library device interface</emphasis> consists
+of a C struct, <type>cyg_nand_device</type>, comprising a number of
+data fields and function pointers. Each NAND chip to be made available
+to the library requires exactly one instance of this struct.</para>
+
+<tip><para>The <type>cyg_nand_device</type> structure includes a
+<structfield>void* priv</structfield> member which is treated
+as opaque. The driver may use this member as it sees fit; it is
+intended to provide an easy means to identify the NAND array, MMIO
+addresses or function pointers to use and so on. Typically this is
+used by the chip driver for its own purposes, and includes a further
+opaque member for the use of the HAL port.
+</para></tip>
+
+<para>The function pointers in the struct form the driver's high-level
+functions; they make use of the low-level functions to talk to the
+chip. We present the high-level functions first, although there is no
+intrinsic reason to prefer either ordering during driver development.</para>
+
+<para> The high-level chip-specific functions
+are traditionally laid out as an <emphasis>inline
+file</emphasis> in an appropriate package in <filename
+class=directory>devs/nand/<replaceable>CHIP</replaceable></filename>.
+The board-specific functions should normally appear in the platform HAL
+and #include the inline.
+</para></sect2>
+
+<sect2 id="nand-devs-partitions"><title>Chip partitions</title>
+<para>Before embarking on the port, you should determine how the
+NAND array will be partitioned. This is necessarily a board-specific
+question, and your layout must accommodate any other software users of
+the array. You will need to know either the fixed layout - converted to
+eraseblock addresses - or how to determine the layout at initialisation
+time.</para>
+
+<tip><para>It may be worthwhile to set up partitioning by way of some
+parameters in your platform's CDL, with sensible defaults, instead of
+outright hard-coding the partition layout.</para></tip>
+
+</sect2>
+<sect2 id="nand-devs-locking"><title>Locking against concurrent access</title>
+<para>
+The eCos NAND library provides per-device locking, to guard against
+concurrent access during high-level operations.  This support is fully
+automatic; drivers need take no action to make use of it.</para>
+
+<para> This strategy may not be sufficient on all target boards:
+sometimes, accessing a NAND chip requires mediation by CPLD or other
+device, which must be shared with other NAND chips or even other
+peripherals.  <emphasis>If this applies, it is the responsibility
+of the driver and platform port to provide further locking as
+appropriate!</emphasis></para>
+
+<tip><para>When using mutexes in a driver, one should
+use the <emphasis>driver API</emphasis> as defined in
+<filename>&lt;cyg/hal/drv_api.h&gt;</filename> instead of the full kernel
+API. This has the useful property that mutex operations are very cheaply
+implemented when the eCos kernel is not present, such as when operating
+in RedBoot.  </para></tip>
+</sect2>
+
+<sect2 id="nand-devs-cdl">
+<title>Required CDL declarations</title>
+
+<para>
+An individual NAND chip driver must declare the largest page
+size it supports by means of CDL. This is done with a statement like
+the following in its cdl_package stanza:</para>
+
+<programlisting>
+requires        ( CYGNUM_NAND_PAGEBUFFER >= 2048 )
+</programlisting>
+
+<note><para>
+This requirement is due to the internal workings of the eCos NAND
+library: a buffer is required for certain operations which
+manipulate up to a NAND page worth of data, internally to the library.
+This is declared once as a global buffer for safety under low-memory 
+conditions; a page may be too big to use temporary storage on the C stack,
+and the NAND library deliberately avoids the use of
+<function>malloc</function>.</para>
+</note>
+
+<para>
+By convention, a driver package would declare 
+<constant>CYGPKG_IO_NAND</constant> as its <constant>parent</constant> and use 
+<filename>cyg/devs/nand</filename> as its <constant>include_dir</constant>,
+but there is no intrinsic reason why this should be so.</para>
+</sect2>
+</sect1>
+
+<sect1 id="nand-devs-highlevel">
+<title>High-level (chip) functions</title>
+<para> The high-level functions provided by the chip driver are
+typically created as an <emphasis>inline file</emphasis> providing a
+fully-populated <type>cyg_nand_dev_fns_v1</type> struct, instantiated
+by the <type>CYG_NAND_FUNS</type> macro.  The high-level driver should
+not directly read or write to the hardware itself, but instead call into
+functions in the low-level driver.</para>
+
+<para> The form the low-level functions should take is not prescribed;
+typically functions will be required to write commands to the device, to
+read and write data, and to query any status line which may be present.
+The high-level driver should normally provide a header file containing
+prototypes for the functions it requires from the low-level driver.
+(The low-level source file would provide the low-level functions required,
+include the high-level include, then instantiate the combined driver
+using the <type>CYG_NAND_DEVICE</type> macro.)</para>
+
+<para> This source code layout is not intended as a prescription. It
+would for example be entirely in order to store pointers to the low-level
+functions in a struct and set <structfield>priv</structfield> to point
+to that struct, which could be useful in some cases.</para>
+
+<note><para>The device driver must not call <function>malloc</function>
+or otherwise allocate memory; all data should be in the stack or set
+as globals. This is because the driver may be required to run within a
+minimal eCos configuration.</para></note>
+
+<para> These functions should all return 0 on success, or a negative
+eCos error code. In the event of an error, do <emphasis>not</emphasis>
+call back into the NAND library; use the <type>NAND_CHATTER</type>
+macro to report, in case a human is watching, and return an error
+code. The library will take care of ensuring the correct response to
+the application and updating the BBT as necessary.</para>
+
+<sect2 id="nand-devs-devinit">
+<title>Device initialisation</title>
+<programlisting>
+static int my_devinit (cyg_nand_device *dev);
+</programlisting>
+
+<para>
+The <function>devinit</function> function is the most complex, and
+logically one to write first. It is responsible for:</para>
+<itemizedlist>
+<listitem><para>initialising the device, typically by sending a reset
+command;
+</para></listitem>
+<listitem><para>interrogating the device to confirm its presence and
+properties;
+</para></listitem>
+<listitem><para>setting up the partition table list (see
+"Planning a port" above);
+</para></listitem>
+<listitem><para>setting up mutexes as necessary (see
+"Locking against concurrent access" above);
+</para></listitem>
+<listitem><para>populating the other members of the
+<type>cyg_nand_device</type> struct (see below).
+</para></listitem>
+</itemizedlist>
+
+<para> Interrogating the device is normally performed by sending a
+<emphasis>Read ID</emphasis> command and examining the result, which
+typically encodes some or all of the chip parameters.</para>
+
+<para> Given the similarity between many NAND parts, it may be possible
+to write a generic driver to cover all of one or more manufacturer's
+parts, or indeed for all ONFI-compliant parts. At the time of writing,
+this has not yet been attempted.</para>
+
+<variablelist><title>The <function>devinit</function> function must set
+up the following struct members:</title>
+<varlistentry><term><structfield>page_bits</structfield></term><listitem><para>The
+size of the regular (non-spare) part of a page, expressed as the logarithm
+in base 2 of the number of bytes. For example, if pages are 2048 bytes
+long, <structfield>page_bits</structfield> would be 11. Obviously,
+the size of a page must be an exact power of two.
+</para></listitem></varlistentry>
+<varlistentry><term><structfield>spare_per_page</structfield></term><listitem><para>The
+number of bytes of spare area available in each
+page.</para></listitem></varlistentry>
+<varlistentry><term><structfield>block_page_bits</structfield></term><listitem><para>The
+base-2 log of the number of pages per
+eraseblock.</para></listitem></varlistentry>
+<varlistentry><term><structfield>blockcount_bits</structfield></term><listitem><para>The
+total number of erase blocks in the device, expressed as a base-2
+log. </para></listitem></varlistentry>
+<varlistentry><term><structfield>chipsize_log</structfield></term><listitem><para>The
+total size of the chip, not counting the spare areas. This is required so
+that the library can double-check that the given parameters make sense
+by comparing with the preceding fields.  Again, this field is itself a
+base-2 logarithm.</para></listitem></varlistentry>
+<varlistentry><term><structfield>bbt.data</structfield></term><listitem><para>Space
+for the in-memory Bad Block Table for this device.
+</para></listitem></varlistentry>
+<varlistentry><term><structfield>bbt.datasize</structfield></term><listitem><para>This
+is the size of <structfield>bbt.data</structfield>, in bytes.  At present,
+this should be two bits times the number of blocks in the device; in
+other words, <varname>1&lt;&lt;(blockcount_bits-2)</varname> bytes.
+</para></listitem></varlistentry>
+</variablelist>
+
+<para>The <type>cyg_nand_device</type> struct has two further members
+<structfield>ecc</structfield> and <structfield>oob</structfield>
+which must be set up to point to the ECC and OOB descriptors to use for
+the device. This is normally done by the <type>CYG_NAND_DEVICE</type>
+low-level instantiation macro, so will be better described in that
+section, but at this level you should be aware that it is also safe
+to set up the descriptor block during <function>devinit</function>.
+for example if multiple semantics might be you had included logic to
+detect what semantics to use.</para>
+
+<para> The Bad Block Table itself is implemented in a way which intends
+to be compatible with the Linux MTD layer. A full parameter struct is
+not currently provided, though one may be in future.</para>
+</sect2>
+
+<sect2 id="nand-devs-readwrite">
+<title>Reading, writing and erasing data</title>
+<para>The read and write operations are divided into three phases, with the following flow:</para>
+<itemizedlist>
+<listitem><para>Begin. This is called once; the driver should lock any
+platform-level mutex and send the command and address.</para></listitem>
+<listitem><para>Stride. This is called one or more times to read the page
+data from the device. <note><para>The reason for this is if the platform
+provides a NAND controller with hardware ECC: it is often necessary to
+read out the ECC registers every so often.</para></note></para></listitem>
+<listitem><para>Finish. This is called once; it should read or write
+the spare area, (on programming) send a "program confirm" command and
+check its status, and unlock any platform-level mutex.</para></listitem>
+</itemizedlist>
+
+<para>Erasing is a single-shot call which should lock any
+platform-specific mutex, send the command, check its status and unlock
+the mutex.</para>
+
+<programlisting>
+static int my_read_begin(cyg_nand_device *dev, cyg_nand_page_addr page);
+static int my_read_stride(cyg_nand_device *dev, void * dest, size_t size);
+static int my_read_finish(cyg_nand_device *dev, void * spare, size_t spare_size);
+
+static int my_write_begin(cyg_nand_device *dev, cyg_nand_page_addr page);
+static int my_write_stride(cyg_nand_device *dev, const void * src, size_t size);
+static int my_write_finish(cyg_nand_device *dev, const void * spare, size_t spare_size);
+
+static int my_erase_block(cyg_nand_device *dev, cyg_nand_block_addr blk);
+</programlisting>
+</sect2>
+
+<sect2 id="nand-devs-isfactorybad">
+<title>Searching for factory-bad blocks</title>
+<programlisting>
+static int my_is_factory_bad(cyg_nand_device *dev, cyg_nand_block_addr blk);
+</programlisting>
+
+<para> The very first time a NAND chip is used, the library has to
+scan it to check for factory-bad eraseblocks and build up the Bad Block
+Table. This function is called repeatedly to do so, one block at a time;
+it should return 1 if the block is marked bad, or 0 if the block appears
+to be OK.</para>
+
+<para>Typically this function will invoke <function>read_page</function>;
+blocks are usually marked factory-bad by the presence of a particular
+signature in the out-of-band area of the first or second page of that
+block.</para>
+
+<warning><para> It is extremely important that you get this function
+right; after an eraseblock has been written to, it is no longer possible
+to reliably determine whether the block was factory-bad. It is never
+safe to assume that the factory-bad signature for a chip is the same
+as that of a similarly-sized chip or another by the same manufacturer;
+<emphasis>always</emphasis> check the correct spec sheet for the actual
+part or part-family in use!  </para></warning>
+
+<tip><para> Because this function is critical and a subtle error could
+cripple your application some time later in the field when it runs
+across undetected factory-bad blocks, you might find it handy to have
+a double-check before proceeding. If you enable CYGSEM_IO_NAND_READONLY
+in your eCos configuration during early development, you can safely fire
+up a test application (which calls <function>cyg_nand_lookup</function>)
+whilst watching the chatter output: the scan will be performed, but no BBT
+will be written. You can then compare the number of bad blocks reported
+against the manufacturer's specification of the maximum. Double-check
+that your <function>is_factory_bad</function> function is correct before
+enabling read-write mode!  </para></tip>
+</sect2>
+
+<sect2 id="nand-devs-declaring-fun-set">
+<title>Declaring the function set</title>
+<programlisting>
+CYG_NAND_FUNS_V2(mydev_funs, my_devinit,
+        my_read_begin, my_read_stride, my_read_finish,
+        my_write_begin, my_write_stride, my_write_finish,
+        my_erase_block, my_is_factory_bad);
+</programlisting>
+
+<para> This macro ties the above functions together into a struct whose
+name is given as its first argument. The name of the resulting struct
+must be quoted when the driver is formally instantiated, which is normally
+done by the low-level functions.</para>
+<note><para>Earlier versions of this library used a slightly different
+device interface, keyed off the macro CYG_NAND_FUNS. This interface has
+been retired.</para></note>
+</sect2>
+</sect1>
+
+<sect1 id="nand-devs-lowlevel">
+<title>Low-level (board) functions</title>
+<para> The set and prototypes of the functions required here will
+necessarily depend on the board and to a lesser extent on the NAND part
+itself. The following functionality is typically required:</para>
+
+<itemizedlist>
+<listitem><para>Very low-level hardware initialisation - for example,
+GPIO pin direction and interrupt config - if this has not already been
+done by the platform HAL</para></listitem>
+<listitem><para>Set up the chip partition table (see below) </para></listitem>
+<listitem><para>Runtime hardware config as required, such as commanding
+an FPGA or CPLD to route lines to the NAND part </para></listitem>
+<listitem><para>Write a command (byte) </para></listitem>
+<listitem><para>Write an address (handful of bytes) </para></listitem>
+<listitem><para>Write data, usually at the chip's full bus width
+(typically 8 or 16 bits) </para></listitem>
+<listitem><para>Read data at full bus width </para></listitem>
+<listitem><para>Read data at 8-bit width (if the chip has a 16 bit
+data bus, some commands - commonly ReadID - may return 8-bit data)
+</para></listitem>
+<listitem><para>Poll any status lines required or - if supported -
+set them up as interrupts to allow sleeping-wait </para></listitem>
+</itemizedlist>
+
+<sect2 id="nand-devs-accessing">
+<title>Talking to the chip</title>
+<para> It is impossible to prescribe how to achieve this, as it depends
+entirely on how the NAND part is wired up on the board.</para>
+
+<para> The ideal situation is that the NAND part is wired in via the
+CPU's memory controller and that the controller is set up to do most of
+the hard work for you. In that case, reading and writing the device is
+as simple as accessing the correct memory-mapped I/O address; usually
+different address ranges connect to the device's command, address and
+data registers respectively.</para>
+
+<tip><para>The HAL provides a number of macros in
+<filename>&lt;cyg/hal/hal_io.h&gt;</filename> to read and write
+memory-mapped I/O.  </para></tip>
+
+<note><para>On platforms with an MMU, MMIO may be rerouted to different
+addresses to those on the board spec sheet. Check the MMU setup in the
+platform HAL.</para></note>
+
+<para> On some platforms, you may have to invoke an FPGA or CPLD to be
+able to talk to the NAND chip. This might typically take the form of a
+handful of MMIO accesses, but should hopefully be fairly straightforward
+once you've figured out how the components interrelate.</para>
+
+<para> The worst case is where you have no support from any sort of
+controller hardware and have to bit-bang GPIO lines to talk to the chip.
+This is a much more involved process; you have to take great care to get the
+timings right with carefully tuned delays. The result is usually
+quite CPU intensive, and could be clock speed sensitive too; you should
+check for and take account of any CDL settings in the architecture and
+variant HAL which allow the CPU clock frequency to be changed.</para>
+
+<tip><para> If your low-level functions take a
+<type>cyg_nand_device</type> pointer as an argument, you can use its
+<structfield>priv</structfield> member to hold or point to some relevant
+data like the MMIO addresses to use, which is preferable to hard-coding
+them.  Indeed, if you wish your board port to support more than one chip,
+you should use the <structfield>priv</structfield> member to distinguish
+between them.
+</para></tip>
+</sect2>
+
+<sect2 id="nand-devs-partition">
+<title>Setting up the chip partition table</title>
+<para> It is the responsibility of the high-level
+<function>devinit</function> function to set up the device's partition
+table. (It may be appropriate for it to invoke a low-level function to
+do this.)</para>
+
+<para>The partition definition is an array of
+<type>cyg_nand_partition</type> entries in the
+<type>cyg_nand_device</type>.</para>
+
+<programlisting>
+struct _cyg_nand_partition_t {
+cyg_nand_device *dev;
+cyg_nand_block_addr first;
+cyg_nand_block_addr last;
+};
+typedef struct _cyg_nand_partition_t cyg_nand_partition;
+
+struct _cyg_nand_device_t {
+...
+cyg_nand_partition partition[CYGNUM_NAND_MAX_PARTITIONS];
+...
+};
+</programlisting>
+
+<para>
+Application-visible partition numbers are simply indexes into this array.</para>
+
+<itemizedlist>
+<listitem><para>On a live partition, <structfield>dev</structfield>
+must point back to the <type>cyg_nand_device</type> containing it. If
+<constant>NULL</constant>, the partition is inactive.</para></listitem>
+<listitem><para><structfield>first</structfield> is the number of the
+first block of the partition.</para></listitem>
+<listitem><para><structfield>last</structfield> is the number of the last
+block of the partition (<emphasis>not</emphasis> the number of blocks,
+unless the partition starts at block 0).</para></listitem>
+</itemizedlist>
+</sect2>
+
+<sect2 id="nand-devs-lowlevel-putting-it-together">
+<title>Putting it all together...</title>
+<para> Finally, with everything else in place, we turn to the
+CYG_NAND_DEVICE macro to instantiate it.</para>
+
+<programlisting>
+CYG_NAND_DEVICE(my_nand, "onboard", &amp;mydev_funs, &amp;my_priv_struct, &amp;linux_mtd_ecc, &amp;nand_mtd_oob_64);
+</programlisting>
+
+<para>In order, the arguments to this macro are:</para>
+
+<itemizedlist>
+<listitem><para>The name to give the resultant cyg_nand_device struct;</para></listitem>
+<listitem><para>the device identifier string, application-visible to be used in <function>cyg_nand_lookup()</function> ;</para></listitem>
+<listitem><para>a pointer to the device high-level function set to use,
+normally set up by the CYG_NAND_FUNS macro;</para></listitem>
+<listitem><para>the <structfield>priv</structfield> member to include
+in the struct;</para></listitem>
+<listitem><para>a pointer to the ECC semantics block to use.
+<filename>linux_mtd_ecc</filename> provides software ECC compatible
+with the Linux MTD layer, but it is strongly recommended to use
+onboard hardware ecc support if this is present as it gives a huge
+speed boost. See <xref linkend="nand-ecc"> for more details.
+</para></listitem>
+<listitem><para>a pointer to the OOB-area layout descriptor to use (see
+<filename>nand_oob.h</filename> : nand_mtd_oob_16 and nand_mtd_oob_64
+are Linux-compatible layouts for devices with 16 and 64 bytes of spare
+area per page respectively).</para></listitem>
+</itemizedlist>
+
+<para>The macro invokes the appropriate linker magic to pull all the
+compiled NAND device structs into one section so the NAND library can
+find them.</para>
+
+</sect2>
+
+</sect1>
+
+<sect1 id="nand-ecc"><title>ECC implementation</title>
+
+<para>
+The use of ECC is strongly recommended with NAND flash parts owing to their
+tendency to occasionally bit-flip. This is usually done with a variant of 
+a Hamming code which calculates column and line parity.
+The computed ECC is stored in the spare area of the page to which it relates.
+</para>
+
+<para>
+The NAND library automatically computes and stores the ECC of data as it
+is written to the chip. On read, the code is calculated for the data
+actually read; this is compared with the stored code and the data
+repaired if necessary.
+</para>
+
+<para>
+The NAND library comes with a software ECC implementation named 
+<filename>linux_mtd_ecc</filename>. This is compatible with the
+ECC used in the Linux MTD layer, hence its name. It calculates
+a 3-byte ECC on a 256-byte data block.
+This algorithm is adequate for most circumstances, but it is
+strongly recommended to use any hardware ECC support which may
+be available because of the performance gains it yields.
+(In testing, we observed that up to two thirds of the time
+taken by every page read and program call was used in computing
+ECC in software.)
+
+</para>
+
+<sect2 id="nand-ecc-interface"><title>The ECC interface</title>
+<para>
+This library draws a semantic distinction between
+<emphasis>hardware</emphasis> and
+<emphasis>software</emphasis>
+ECC implementations.
+</para>
+
+<itemizedlist>
+<listitem><para>
+A software ECC implementation will typically not require an
+initialisation step. The calculation function will always be
+called with a pointer to the data bytes to compute.
+</para></listitem>
+<listitem><para>
+A hardware implementation is assumed to read and act upon the data
+<emphasis>as it goes past</emphasis>.
+Therefore, it will not be passed a pointer to the data 
+when its <filename>calculate</filename> step is invoked.
+</para></listitem>
+</itemizedlist>
+
+<para>
+An ECC is defined by the following parameters:
+<itemizedlist>
+<listitem><para>The size of data block it handles, in bytes.
+</para></listitem>
+<listitem><para>The size of ECC it calculates on those blocks, in bytes.
+</para></listitem>
+<listitem><para>Whether the algorithm is hardware or software.
+</para></listitem>
+</itemizedlist>
+</para>
+
+<para>An ECC algorithm must provide the following functions:
+</para>
+
+<programlisting>
+/* Initialises an ECC computation. May be NULL if not required. */
+void my_ecc_init(struct _cyg_nand_device_t *dev);
+
+
+/* Returns the ECC for the given data block.
+ * If IS_HARDWARE:
+ *  - dat and nbytes are ignored
+ * If ! IS_HARDWARE:
+ *  - dat and nbytes are required
+ *  - if nbytes is less than the chunk size, the remainder are
+ *    assumed to be 0xff.
+ */
+void my_ecc_calc(struct _cyg_nand_device_t *dev, 
+                 const CYG_BYTE *dat, size_t nbytes, CYG_BYTE *ecc);
+
+
+/* Repairs the ECC for the given data block, if needed.
+ * Call this if your read-from-chip ECC doesn't match what you computed
+ * over the data block. Both *dat and *ecc_read may be corrected.
+ *
+ * `nbytes' is the number of bytes we're interested in; if a correction
+ * is indicated outside of that range, it will be ignored.
+ *
+ * Returns: 
+ *       0 for no errors
+ *       1 for a corrected single bit error in the data
+ *       2 for a corrected single bit error in the ECC
+ *      -1 for an uncorrectable error (more than one bit)
+ */
+int my_ecc_repair(struct _cyg_nand_device_t *dev,
+                  CYG_BYTE *dat, size_t nbytes, 
+                  CYG_BYTE *ecc_read, const CYG_BYTE *ecc_calc);
+</programlisting>
+
+<para>In some cases - particularly where hardware assistance is in use -
+it is necessary to specify different functions
+for calculating the ECC depending on whether the operation at hand is
+a page read or a page write. In that case, two <emphasis>calc</emphasis>
+functions may be supplied, each taking the same prototype.
+</para>
+
+<para>The algorithm parameters and functions are then tied together
+with one of the following macros:
+</para>
+
+<programlisting>
+CYG_NAND_ECC_ALG_SW(my_ecc, _datasize, _eccsize, my_ecc_init, my_ecc_calc, my_ecc_repair);
+
+CYG_NAND_ECC_ALG_HW(my_ecc, _datasize, _eccsize, my_ecc_init, my_ecc_calc, my_ecc_repair);
+
+CYG_NAND_ECC_ALG_HW2(my_ecc, _datasize, _eccsize, my_ecc_init, my_ecc_calc_read, my_ecc_calc_write, my_ecc_repair);
+</programlisting>
+
+<tip><para>
+It's OK to use software ECC while getting things going, but if you do
+then switch to a hardware implementation, you probably need to erase
+your entire NAND chip including its Bad Block Table. The
+<filename>nanderase</filename> utility may come in handy for this.)
+</para></tip>
+
+<warning><para>You must be sure that your ECC repair algorithm is correct.
+This can be quite tricky to test. 
+However, it is often possible to hoodwink the controller into computing
+ECCs for you even if the data is not going to affect the data stored
+on the NAND chip, for example if you send it data but haven't told it to
+program a page.
+A variant of the <filename>sweccwalk</filename> test may come in handy
+for this purpose.
+</para></warning>
+
+<para>
+An example implementation, including an ECC calculation and repair test
+named <filename>eccwalk</filename>, may be found in the STM3210E
+evaluation board platform HAL, 
+<filename>packages/hal/cortexm/stm32/stm3210e_eval</filename>.
+The chip NAND controller has on-board ECC calculation, but does not 
+undertake to repair data; a repair function was written specially.
+</para>
+
+</sect2>
+</sect1>
+
+</chapter>
+
+<chapter id="nand-tests-utils">
+
+<title>Tests and utilities</title>
+
+<sect1 id="nand-tests"><title>Unit and functional tests</title>
+<para> The NAND library includes a number of tests. The most useful to
+driver writers are <filename>readwrite</filename>,
+<filename>rwbenchmark</filename>
+and
+<filename>sweccwalk</filename>;
+the others are only likely to be of interest to library maintainers.</para>
+
+<glosslist>
+<glossentry><glossterm>readwrite</glossterm><glossdef><para>Performs a
+read-write-erase cycle on the first NAND device it finds, checking that
+its operations have had the expected effect on the device contents. This
+is a potentially destructive test; do not run it on a device containing
+data you care about!
+</para></glossdef></glossentry>
+<glossentry><glossterm>rwbenchmark</glossterm><glossdef><para>
+A more involved version of <filename>readwrite</filename>, this is a
+timing test which performs multiple reads, writes and erases and 
+applies statistical techniques to the results in the same way that
+<filename>tm_basic</filename> instruments the speed of various eCos kernel functions.
+<emphasis>
+This is a potentially destructive test; do not run it on a device containing
+data you care about!</emphasis>
+</para></glossdef></glossentry>
+<glossentry><glossterm>sweccwalk</glossterm><glossdef><para>
+Repeatedly makes single-bit changes to a data buffer and checks that the
+software ECC implementation correctly repairs them.
+<tip><para>
+This test can be adapted to test out hardware ECC implementations.
+The test outputs the raw ECC codes as it goes, which is useful in
+confirming that the bits in the computed ECC are what you think they are.
+</para></tip>
+</para></glossdef></glossentry>
+
+<glossentry><glossterm>nandunit</glossterm><glossdef><para>Some unit tests
+which do not require any NAND device: ECC known answer vectors, and OOB
+area packing/unpacking correctness. </para></glossdef></glossentry>
+<glossentry><glossterm>readlimits</glossterm><glossdef><para>Attempts
+to read a block outside of a partition, confirming that it doesn't
+work.</para></glossdef></glossentry>
+</glosslist>
+
+<para>There are some further tests of the library which
+require the <link linkend="devs-nand-synth-tests">synthetic NAND device</link>. 
+</para>
+</sect1>
+
+<sect1 id="nand-utils">
+<title>Ancillary NAND utilities</title>
+<para> The following utilities are included with the NAND library.
+They are standalone eCos applications; for convenience, you can set
+<constant>CYGBLD_IO_NAND_BUILD_UTILS</constant> in your eCos configuration
+and they will be built and placed into
+<filename>install/tests/io/nand/current/utils</filename>.
+</para>
+
+<glosslist>
+<glossentry><glossterm>erasenand.c</glossterm><glossdef><para>
+Loops over all the blocks of a partition, erasing all the blocks which are not
+marked as bad.  The device and partition to erase are set by #define.
+<note><para>This will not normally erase the Bad Block Table. This is because
+the BBT reports its own blocks as "Reserved" when queried via
+<function>cyg_nand_bbt_query</function>, which makes them inaccessible
+to applications.  However, if
+<constant>CYGSEM_IO_NAND_USE_BBT</constant> is turned off, then any BBT
+present will not be detected and hence will be erased.
+</para></note>
+</para></glossdef></glossentry>
+<glossentry><glossterm>erase_bbt_dangerous.c</glossterm><glossdef><para>
+Erases the NAND blocks comprising the primary and mirror bad-block tables of a device.
+The device to erase is set by #define.
+(The tables are detected by the library in the usual way. If none are present, the
+library will scan the device for factory-bad blocks to create such a table, then this
+code will immediately erase it.)
+<warning><para>It is particularly dangerous to run this utility
+on a production device, as it is generally not possible to later
+reconstruct the list of factory-bad blocks. It is intended only as an
+aid to driver authors. </para></warning>
+</para></glossdef></glossentry>
+</glosslist>
+</sect1>
+</chapter>
+
+</part>

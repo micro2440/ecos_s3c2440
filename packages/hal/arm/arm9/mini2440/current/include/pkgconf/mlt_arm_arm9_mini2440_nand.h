@@ -17,4 +17,4 @@
 extern char CYG_LABEL_NAME (__heap1) [];
 #endif
 #define CYGMEM_SECTION_heap1 (CYG_LABEL_NAME (__heap1))
-#define CYGMEM_SECTION_heap1_SIZE (CYGMEM_REGION_ram + CYGMEM_REGION_ram_SIZE - (size_t) CYG_LABEL_NAME (__heap1))
+#define CYGMEM_SECTION_heap1_SIZE (MINI2440_SDRAM_SIZE)

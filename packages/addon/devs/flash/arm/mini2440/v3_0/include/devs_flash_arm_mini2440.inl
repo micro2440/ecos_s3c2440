@@ -21,7 +21,7 @@
 
 static cyg_nand_dev nand_device = 
 { 
-    .flash_base = (void*) (0x80000000), 
+    .flash_base = (void*) (0x00000000), 
     .addr_r = (void*) NFDATA,
     .addr_w = (void*) NFDATA, 
      

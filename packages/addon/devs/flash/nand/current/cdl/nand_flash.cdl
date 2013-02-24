@@ -52,7 +52,7 @@ cdl_package CYGPKG_DEVS_FLASH_NAND {
     parent        CYGPKG_IO_FLASH
     active_if	  CYGPKG_IO_FLASH
     
-    requires      { CYGSEM_IO_FLASH_READ_INDIRECT == 1 }
+    ###requires      { CYGSEM_IO_FLASH_READ_INDIRECT == 1 }
 	implements    CYGHWR_IO_FLASH_INDIRECT_READS
 
 	compile       nand_flash.c
